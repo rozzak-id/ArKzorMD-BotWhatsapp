@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "noImplicitOverride": true,
+    "noFallthroughCasesInSwitch": true,
+    "verbatimModuleSyntax": true,
+    "isolatedModules": true,
+    "resolveJsonModule": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "jsx": "react-jsx",
+    "jsxImportSource": "preact",
+    "baseUrl": ".",
+    "paths": {
+      "@arkzormd/core": ["packages/core/src/index.ts"],
+      "@arkzormd/adapter-whatsapp": ["packages/adapter-whatsapp/src/index.ts"],
+      "@arkzormd/adapter-telegram": ["packages/adapter-telegram/src/index.ts"],
+      "@arkzormd/adapter-discord": ["packages/adapter-discord/src/index.ts"],
+      "@arkzormd/plugin-example-command": ["plugins/example-command/src/index.ts"],
+      "@arkzormd/plugin-example-tool": ["plugins/example-tool/src/index.ts"]
+    }
+  }
+}

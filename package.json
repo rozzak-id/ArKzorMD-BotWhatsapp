@@ -1,0 +1,32 @@
+{
+  "name": "arkzormd",
+  "version": "0.1.0",
+  "private": true,
+  "description": "ArKzorMD — bot AI WhatsApp hybrid, open source, self-hosted.",
+  "license": "MIT",
+  "type": "module",
+  "engines": {
+    "node": ">=20.11"
+  },
+  "workspaces": [
+    "packages/*",
+    "apps/*",
+    "plugins/*"
+  ],
+  "scripts": {
+    "dev": "concurrently -k -n server,web -c blue,magenta \"npm:dev:server\" \"npm:dev:web\"",
+    "dev:server": "npm run dev -w @arkzormd/server",
+    "dev:web": "npm run dev -w @arkzormd/web",
+    "build": "npm run build -w @arkzormd/web && npm run build -w @arkzormd/server",
+    "start": "npm run start -w @arkzormd/server",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "devDependencies": {
+    "@types/node": "^24.19.2",
+    "concurrently": "^10.0.6",
+    "typescript": "^5.9.3",
+    "vitest": "^5.0.5"
+  }
+}
