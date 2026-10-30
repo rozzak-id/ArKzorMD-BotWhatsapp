@@ -9,6 +9,7 @@
     ".": "./src/index.ts"
   },
   "dependencies": {
-    "@arkzormd/core": "0.1.0"
+    "@arkzormd/core": "0.1.0",
+    "onigis": "10.1.0-rc.12"
   }
 }

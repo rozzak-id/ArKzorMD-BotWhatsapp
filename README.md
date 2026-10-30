@@ -7,10 +7,12 @@ berisiko melewati **Permission Engine** dan **persetujuan Owner** yang ditegakka
 kode — bukan oleh AI.
 
 Status saat ini: **M0 — fondasi**. Struktur repo, core pipeline, permission/approval,
-SQLite, API server, dan kerangka Web UI sudah berjalan dengan provider AI dan adapter
-WhatsApp mode **mock**. Integrasi OnigiBaileys dan provider AI asli menyusul di M0/M1.
+SQLite, API server, Web UI, dan adapter WhatsApp berbasis **`onigis`** (fork Baileys 7
+dengan E2EE native MIT) sudah terpasang. Mode `mock` berjalan di semua OS; koneksi
+WhatsApp **live** memerlukan Linux x64/arm64 (Docker/WSL) karena paket E2EE native
+`oktz-signal`/`oktz-curve25519` hanya menyediakan prebuild Linux.
 
-> ⚠️ **Risiko akun WhatsApp.** Bot ini memakai protokol tidak resmi (OnigiBaileys/Baileys).
+> ⚠️ **Risiko akun WhatsApp.** Bot ini memakai protokol tidak resmi (Onigi/Baileys).
 > Gunakan nomor khusus, jangan nomor utama. Risiko pemblokiran ada pada pengguna. Baca
 > [SECURITY.md](SECURITY.md) sebelum menghubungkan akun.
 
@@ -41,16 +43,17 @@ WhatsApp mode **mock**. Integrasi OnigiBaileys dan provider AI asli menyusul di 
 | Bot pipeline | ✅ | Filter pesan, mode grup, humanizer, rate limit, audit |
 | Web UI flat | ✅ (shell) | Dashboard live, persona, pengguna, approval, tools, audit, platform |
 | API + WebSocket | ✅ | Status real-time, endpoint approval ber-token |
-| Adapter WhatsApp | 🚧 seam | Binding OnigiBaileys belum aktif (paket belum tersedia di npm) |
+| Adapter WhatsApp | ✅ | `onigis` 10.1.0-rc.12: QR/pairing, reconnect backoff, teks/media/reaction, tombol approval + fallback command |
 | Provider AI asli | 🚧 | Antarmuka siap; implementasi OpenAI-compatible/Gemini di M1 |
 | Adapter Telegram/Discord | 🚧 stub | Kartu Coming Soon di Web UI |
-| Media (gambar, VN, PDF, TTS, stiker) | ⏳ | M4/M6 |
+| Media (analisis gambar/VN) | ⏳ | M4/M6 |
 
 ## Persyaratan
 
 - **Node.js ≥ 20.11** (disarankan 22 LTS atau 24)
 - npm ≥ 10 (npm workspaces)
-- Linux, macOS, atau Windows
+- Linux, macOS, atau Windows untuk mode `mock`
+- **WhatsApp live:** Linux x64/arm64. Di Windows/macOS gunakan Docker atau WSL.
 - Untuk Docker: Docker Engine + Compose v2
 
 ## Mulai cepat
@@ -68,8 +71,24 @@ Buka:
 - Web UI pengembangan: <http://localhost:5173>
 - API: <http://localhost:3000/api/health>
 
-Secara default `WHATSAPP_MODE=mock`, jadi bot berjalan tanpa akun WhatsApp. Ubah `.env`
-menjadi `WHATSAPP_MODE=live` setelah binding OnigiBaileys tersedia.
+Secara default `WHATSAPP_MODE=mock`, jadi bot berjalan tanpa akun WhatsApp. Mode ini
+aman di Windows/macOS dan tidak memuat paket native E2EE.
+
+### Menghubungkan WhatsApp live
+
+Isi `.env`:
+
+```dotenv
+WHATSAPP_MODE=live
+WHATSAPP_AUTOCONNECT=true
+WHATSAPP_MODULE=onigis
+OWNER_JID=6281234567890@s.whatsapp.net
+```
+
+Jalankan server di Linux/Docker/WSL, buka **Koneksi WhatsApp** di Web UI, lalu pindai QR
+dari menu WhatsApp → **Perangkat tertaut** → **Tautkan perangkat**. Sesi disimpan di
+`data/whatsapp-auth`; reconnect otomatis berjalan dengan backoff. Di Windows, koneksi
+live akan gagal saat enkripsi pertama — gunakan Docker/WSL.
 
 Build produksi:
 
@@ -93,6 +112,11 @@ Web UI: <http://127.0.0.1:3000>. Data SQLite dan sesi WhatsApp tersimpan di `./d
 Port sengaja di-bind ke localhost; untuk akses publik pasang reverse proxy HTTPS
 (Caddy/Nginx) dan jangan pernah mengekspos port API langsung.
 
+Docker adalah cara yang disarankan untuk WhatsApp live karena image berbasis Linux dan
+menyertakan prebuild native `onigis`. Set `WHATSAPP_MODE=live` dan
+`WHATSAPP_AUTOCONNECT=true` di `.env`, lalu buka halaman **Koneksi WhatsApp** untuk
+memindai QR.
+
 ## Struktur repo
 
 ```text
@@ -112,7 +136,7 @@ arkzormd/
 │  │     ├─ tools/             # registry + tool bawaan
 │  │     ├─ bot.ts             # orkestrator pipeline pesan
 │  │     └─ types.ts           # kontrak netral platform
-│  ├─ adapter-whatsapp/        # seam OnigiBaileys (binding M0)
+│  ├─ adapter-whatsapp/        # adapter onigis: koneksi, normalisasi, kirim, approval
 │  ├─ adapter-telegram/        # stub Coming Soon
 │  └─ adapter-discord/         # stub Coming Soon
 ├─ apps/
@@ -161,6 +185,8 @@ Semua konfigurasi awal lewat `.env` (lihat `.env.example`). Nilai penting:
 | `DEFAULT_CHAT_MODE` | `mention` | Mode grup default: `off`, `mention`, `active` |
 | `PREFIX` | `.` | Prefix command |
 | `WHATSAPP_MODE` | `mock` | `live`, `mock`, `off` |
+| `WHATSAPP_AUTOCONNECT` | `false` | `true` untuk langsung pairing/connect saat startup |
+| `WHATSAPP_MODULE` | `onigis` | Modul adapter WhatsApp; gunakan `onigis` |
 | `AI_PROVIDER` | `mock` | Hanya `mock` yang aktif di M0 |
 
 Jangan commit `.env`. Secret tidak pernah dikirim ke prompt, log, atau Web UI; audit log
@@ -191,7 +217,16 @@ pengirim (mode mock), lalu kirim:
 { "text": "kirim pesan ke 081234567890: rapat jam 3", "name": "Owner" }
 ```
 
-Approval muncul di dashboard/antrean. Keputusan dari API (butuh `ADMIN_TOKEN`):
+Approval muncul di dashboard/antrean. Jika `OWNER_JID` diisi, Owner juga menerima
+tombol WhatsApp; fallback teks memakai command:
+
+```text
+.approve #A7F3
+.reject  #A7F3
+.always  #A7F3
+```
+
+Keputusan lewat API (butuh `ADMIN_TOKEN`):
 
 ```bash
 curl -X POST http://127.0.0.1:3000/api/approvals/%23A7F3/decision \
@@ -200,7 +235,7 @@ curl -X POST http://127.0.0.1:3000/api/approvals/%23A7F3/decision \
   -d '{"decision":"approve"}'
 ```
 
-> Endpoint ini sementara. Login Web UI, tombol WhatsApp, dan UI keputusan penuh masuk M2/M3.
+> Endpoint API tetap sementara. Login Web UI dan tombol keputusan penuh masuk M3.
 
 ## Keamanan
 
@@ -217,9 +252,9 @@ Laporkan kerentanan sesuai [SECURITY.md](SECURITY.md).
 
 | Milestone | Status | Isi |
 | --- | --- | --- |
-| M0 Fondasi | 🚧 | Repo, core, adapter WA, SQLite, role — binding OnigiBaileys tersisa |
+| M0 Fondasi | 🚧 | Repo, core, adapter onigis, SQLite, role; live perlu verifikasi di Linux/Docker |
 | M1 AI Agent | ⏳ | Provider asli, persona, memori, fallback model |
-| M2 Izin & approval | 🚧 | Engine selesai; tombol WhatsApp, rehidrasi antrean, UI keputusan |
+| M2 Izin & approval | 🚧 | Engine + tombol/command WhatsApp selesai; rehidrasi antrean dan UI keputusan |
 | M3 Web UI | 🚧 | Shell selesai; auth, wizard, editor, aksi pengguna |
 | M4 Media | ⏳ | Analisis gambar, transkripsi voice note |
 | M5 Hardening | ⏳ | Uji keamanan, dokumentasi, rilis v0.1 |
@@ -227,5 +262,5 @@ Laporkan kerentanan sesuai [SECURITY.md](SECURITY.md).
 
 ## Lisensi
 
-MIT — lihat [LICENSE](LICENSE). Atribusi Baileys/OnigiBaileys dipertahankan sesuai
-lisensi upstream.
+MIT — lihat [LICENSE](LICENSE). Atribusi Baileys/Onigi dipertahankan sesuai lisensi
+upstream.

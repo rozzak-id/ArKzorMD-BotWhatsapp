@@ -91,6 +91,12 @@ export interface PlatformAdapter {
   send(chatId: string, content: OutgoingContent): Promise<void>;
   sendApproval(ownerId: string, request: ApprovalRequest): Promise<void>;
   getStatus(): ConnectionStatus;
+  /** QR pairing terbaru bila adapter memerlukannya (opsional). */
+  getQr?(): string | null;
+  /** JID bot setelah login, bila adapter mengetahuinya (opsional). */
+  getBotJid?(): string | null;
+  /** Pesan error koneksi terakhir untuk ditampilkan di Web UI (opsional). */
+  getLastError?(): string | null;
 }
 
 export interface User {

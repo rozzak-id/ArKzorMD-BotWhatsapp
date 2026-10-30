@@ -32,7 +32,7 @@ const EnvSchema = z.object({
 
   WHATSAPP_MODE: z.enum(['live', 'mock', 'off']).default('mock'),
   WHATSAPP_AUTOCONNECT: booleanFromEnv.default(false),
-  WHATSAPP_MODULE: z.string().default('onigibaileys'),
+  WHATSAPP_MODULE: z.string().default('onigis'),
 
   AI_PROVIDER: z.enum(['mock', 'openai', 'gemini']).default('mock'),
   AI_MODEL: z.string().default('gpt-4o-mini'),

@@ -1,4 +1,5 @@
 import type { Role } from '../types.js';
+import type { ApprovalDecision } from '../security/approval-engine.js';
 import type { CommandContext, CommandDefinition } from './command-registry.js';
 
 const ROLE_LABEL: Record<Role, string> = {
@@ -20,6 +21,46 @@ function menuText(context: CommandContext): string {
     'Ketik pesan biasa untuk bicara dengan AI.',
   ];
   return lines.join('\n');
+}
+
+async function decideApprovalCommand(
+  context: CommandContext,
+  decision: ApprovalDecision,
+): Promise<string> {
+  const code = context.args[0]?.trim();
+  if (!code) {
+    const pending = context.services.getStatus().pendingApprovals;
+    return (
+      'Sertakan kode approval, misalnya `.approve #A7F3`.\n' +
+      `Approval menunggu: ${pending}. Daftar lengkap ada di Web UI > Approval.`
+    );
+  }
+
+  const result = await context.services.decideApproval({
+    shortCode: code,
+    actorJid: context.message.senderId,
+    decision,
+  });
+
+  if (!result.ok) return `⚠️ ${result.reason ?? 'Approval tidak dapat diputuskan.'}`;
+
+  const normalizedCode = result.request?.shortCode ?? code.toUpperCase();
+  if (decision === 'reject') {
+    return `🚫 Approval ${normalizedCode} ditolak. Aksi tidak dijalankan.`;
+  }
+  if (result.executionError) {
+    return (
+      `⚠️ Approval ${normalizedCode} disetujui, tetapi eksekusi gagal: ` +
+      `${result.executionError}`
+    );
+  }
+  if (decision === 'always') {
+    return (
+      `✅ Approval ${normalizedCode} disetujui dan dijalankan. ` +
+      'Aturan "selalu izinkan" untuk aksi serupa sudah disimpan.'
+    );
+  }
+  return `✅ Approval ${normalizedCode} disetujui dan dijalankan.`;
 }
 
 export function createDefaultCommands(): CommandDefinition[] {
@@ -107,6 +148,24 @@ export function createDefaultCommands(): CommandDefinition[] {
         });
         return `🎭 Persona aktif sekarang: *${persona.name}* (${persona.id}).`;
       },
+    },
+    {
+      name: 'approve',
+      description: 'Setujui aksi tertunda dengan kode (Owner)',
+      roles: ['owner'],
+      handler: (context) => decideApprovalCommand(context, 'approve'),
+    },
+    {
+      name: 'reject',
+      description: 'Tolak aksi tertunda dengan kode (Owner)',
+      roles: ['owner'],
+      handler: (context) => decideApprovalCommand(context, 'reject'),
+    },
+    {
+      name: 'always',
+      description: 'Setujui dan selalu izinkan aksi serupa (Owner)',
+      roles: ['owner'],
+      handler: (context) => decideApprovalCommand(context, 'always'),
     },
     {
       name: 'stop',

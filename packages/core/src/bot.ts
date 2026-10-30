@@ -31,6 +31,7 @@ export interface BotConfig {
   defaultChatMode: ChatMode;
   botJid: string | null;
   botNames: string[];
+  commandPrefix: string;
 }
 
 export interface BotDependencies {
@@ -60,6 +61,10 @@ export interface HandleResult {
 }
 
 const MAX_MESSAGE_AGE_MS = 5 * 60_000;
+
+function bareJidUser(jid: string): string {
+  return jid.split('@')[0]?.split(':')[0] ?? jid;
+}
 
 /**
  * Orkestrator bot: filter pesan, role, mode chat, router hybrid,
@@ -261,8 +266,12 @@ export class Bot {
 
   private isMentioned(message: InternalMessage): boolean {
     if (message.quoted?.fromBot) return true;
-    if (this.deps.config.botJid && message.mentions.includes(this.deps.config.botJid)) {
-      return true;
+    const botJid = this.deps.config.botJid ?? this.deps.adapter.getBotJid?.() ?? null;
+    if (botJid) {
+      const bareBot = bareJidUser(botJid);
+      if (message.mentions.some((mention) => bareJidUser(mention) === bareBot)) {
+        return true;
+      }
     }
     const text = message.text.toLowerCase();
     const normalizedNames = this.deps.config.botNames.map((name) => name.toLowerCase().trim());
@@ -370,6 +379,7 @@ export class Bot {
           action: enabled ? 'killswitch.enabled' : 'killswitch.disabled',
         });
       },
+      decideApproval: (input) => this.decideApproval(input),
     };
   }
 
@@ -428,7 +438,9 @@ export class Bot {
       `Detail: ${JSON.stringify(request.params)}`,
       `Berlaku sampai: ${expiry}`,
       '',
-      'Balas `1` untuk setuju atau `2` untuk tolak.',
+      `Balas \`${this.deps.config.commandPrefix}approve ${request.shortCode}\` untuk setuju, ` +
+        `\`${this.deps.config.commandPrefix}reject ${request.shortCode}\` untuk tolak, atau ` +
+        `\`${this.deps.config.commandPrefix}always ${request.shortCode}\` untuk setuju selalu.`,
     ].join('\n');
   }
 

@@ -699,6 +699,28 @@ details summary {
 
 /* QR */
 
+.qr-frame {
+  width: min(100%, 320px);
+  margin: 0 auto 12px;
+  padding: 12px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: #ffffff;
+}
+
+.qr-frame img {
+  display: block;
+  width: 100%;
+  max-width: 280px;
+  height: auto;
+}
+
+.qr-connected span {
+  color: var(--ok);
+}
+
 .qr-placeholder {
   min-height: 200px;
   display: grid;

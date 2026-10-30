@@ -2,6 +2,7 @@ import type { InternalMessage, PlatformAdapter, Role } from '../types.js';
 import type { MessageStore, PersonaStore, SettingsStore, UserStore } from '../stores.js';
 import type { AuditLog } from '../audit/audit-log.js';
 import type { ConnectionStatus } from '../types.js';
+import type { DecideInput, DecideResult } from '../security/approval-engine.js';
 
 export interface CommandRuntimeStatus {
   uptimeSec: number;
@@ -21,6 +22,7 @@ export interface CommandServices {
   menuFor(role: Role): Array<{ name: string; description: string }>;
   getStatus(): CommandRuntimeStatus;
   setKillSwitch(enabled: boolean): void;
+  decideApproval(input: DecideInput): Promise<DecideResult>;
 }
 
 export interface CommandContext {

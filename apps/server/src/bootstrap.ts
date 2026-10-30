@@ -44,6 +44,7 @@ function createAdapter(
         authDir: resolve(config.dataDir, 'whatsapp-auth'),
         logger,
         moduleName: config.whatsappModule,
+        commandPrefix: config.prefix,
       }),
       mock: null,
     };
@@ -125,6 +126,7 @@ export async function createAppContext(config: AppConfig): Promise<AppContext> {
       defaultChatMode: config.defaultChatMode,
       botJid: null,
       botNames: config.botNames.length > 0 ? config.botNames : ['Arka'],
+      commandPrefix: config.prefix,
     },
     router,
     commands,

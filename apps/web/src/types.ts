@@ -8,7 +8,16 @@ export interface StatusResponse {
   nodeEnv: string;
   uptimeSec: number;
   ai: { provider: string; model: string };
-  connection: { platform: 'whatsapp'; mode: string; status: ConnectionStatus };
+  connection: {
+    platform: 'whatsapp';
+    mode: string;
+    status: ConnectionStatus;
+    qr: string | null;
+    autoconnect: boolean;
+    module: string;
+    runtime: string;
+    lastError: string | null;
+  };
   killSwitch: boolean;
   ownerConfigured: boolean;
   counts: { users: number; pendingApprovals: number; messagesToday: number };

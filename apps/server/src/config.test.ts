@@ -22,6 +22,10 @@ describe('loadConfig', () => {
     expect(config.adminToken).toBe('token-uji-yang-cukup-panjang');
   });
 
+  it('memakai onigis sebagai modul WhatsApp default', () => {
+    expect(loadConfig({}).whatsappModule).toBe('onigis');
+  });
+
   it('menolak ADMIN_TOKEN yang terlalu pendek', () => {
     expect(() => loadConfig({ ADMIN_TOKEN: 'pendek' })).toThrow(/minimal 16 karakter/i);
   });

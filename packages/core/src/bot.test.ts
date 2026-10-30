@@ -63,6 +63,7 @@ function createHarness() {
       defaultChatMode: 'mention',
       botJid: null,
       botNames: ['Arka'],
+      commandPrefix: '.',
     },
     router: new MessageRouter('.', commands),
     commands,
@@ -181,6 +182,52 @@ describe('Bot pipeline (mock end-to-end)', () => {
     const actions = harness.audit.list(50).map((entry) => entry.action);
     expect(actions).toContain('approval.requested');
     expect(actions).toContain('tool.executed_via_approval');
+  });
+
+  it('Owner bisa menyetujui approval lewat command .approve di WhatsApp', async () => {
+    const harness = createHarness();
+    cleanup = () => {
+      harness.bot.stop();
+      harness.db.close();
+    };
+    await harness.adapter.connect();
+    harness.bot.start();
+
+    await harness.adapter.receive(
+      message({
+        senderId: ADMIN,
+        senderName: 'Admin',
+        text: 'kirim pesan ke 081234567890: rapat jam 4',
+      }),
+    );
+
+    const approval = harness.adapter.approvals[0]?.request;
+    expect(approval).toBeDefined();
+
+    await harness.adapter.receive(
+      message({
+        senderId: OWNER,
+        senderName: 'Owner',
+        chatId: OWNER,
+        text: `.approve ${approval?.shortCode ?? ''}`,
+      }),
+    );
+
+    expect(harness.stores.approvals.get(approval?.id ?? '')?.status).toBe('approved');
+    expect(
+      harness.adapter.sent.some(
+        (record) =>
+          record.chatId === '6281234567890@s.whatsapp.net' &&
+          record.content.text === 'rapat jam 4',
+      ),
+    ).toBe(true);
+    expect(
+      harness.adapter.sent.some((record) => record.content.text?.includes('disetujui')),
+    ).toBe(true);
+
+    const actions = harness.audit.list(50).map((entry) => entry.action);
+    expect(actions).toContain('command.executed');
+    expect(actions).toContain('approval.decided');
   });
 
   it('kill switch memblokir aksi L1 Admin', async () => {

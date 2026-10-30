@@ -32,7 +32,7 @@ export function DashboardPage({ status }: { status: StatusResponse | null }) {
         <Card title="Koneksi WhatsApp">
           <p class="metric">{status?.connection.status ?? '—'}</p>
           <p class="muted">
-            Mode: {status?.connection.mode ?? '—'} · transport OnigiBaileys
+            Mode: {status?.connection.mode ?? '—'} · transport onigis
           </p>
         </Card>
         <Card title="AI Provider">

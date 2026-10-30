@@ -9,7 +9,16 @@ export interface StatusResponse {
   nodeEnv: string;
   uptimeSec: number;
   ai: { provider: string; model: string };
-  connection: { platform: 'whatsapp'; mode: string; status: ConnectionStatus };
+  connection: {
+    platform: 'whatsapp';
+    mode: string;
+    status: ConnectionStatus;
+    qr: string | null;
+    autoconnect: boolean;
+    module: string;
+    runtime: string;
+    lastError: string | null;
+  };
   killSwitch: boolean;
   ownerConfigured: boolean;
   counts: { users: number; pendingApprovals: number; messagesToday: number };
@@ -43,6 +52,11 @@ export function buildStatus(context: AppContext): StatusResponse {
       platform: 'whatsapp',
       mode: context.config.whatsappMode,
       status: context.adapter.getStatus(),
+      qr: context.adapter.getQr?.() ?? null,
+      autoconnect: context.config.whatsappAutoconnect,
+      module: context.config.whatsappModule,
+      runtime: `${process.platform}-${process.arch}`,
+      lastError: context.adapter.getLastError?.() ?? null,
     },
     killSwitch: context.stores.settings.getBoolean('kill_switch'),
     ownerConfigured: Boolean(context.config.ownerJid),
@@ -63,12 +77,16 @@ export function buildPlatforms(context: AppContext): PlatformCard[] {
       name: 'WhatsApp',
       enabled: whatsappEnabled,
       state: whatsappEnabled ? 'active' : 'inactive',
-      connection: context.adapter.getStatus(),
-      transport: 'OnigiBaileys',
+      connection: whatsappEnabled ? context.adapter.getStatus() : 'disconnected',
+      transport: 'onigis',
       note:
-        context.config.whatsappMode === 'mock'
-          ? 'Mode mock aktif — pesan disimulasikan untuk pengembangan.'
-          : undefined,
+        context.config.whatsappMode === 'off'
+          ? 'WhatsApp dimatikan lewat WHATSAPP_MODE=off.'
+          : context.config.whatsappMode === 'mock'
+            ? 'Mode mock aktif — pesan disimulasikan untuk pengembangan.'
+            : process.platform !== 'linux'
+              ? 'Live WhatsApp memerlukan Linux x64/arm64 (Docker/WSL) untuk E2EE native.'
+              : 'Terhubung lewat onigis (fork Baileys 7, E2EE MIT).',
     },
     {
       id: 'telegram',

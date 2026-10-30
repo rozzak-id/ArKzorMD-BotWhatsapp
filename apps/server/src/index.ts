@@ -20,6 +20,9 @@ async function main(): Promise<void> {
     context.logger.info({ signal }, 'Mematikan ArKzorMD...');
     try {
       await app.close();
+      await context.adapter.disconnect().catch((error: unknown) => {
+        context.logger.warn({ err: error }, 'Gagal memutuskan adapter saat shutdown');
+      });
       context.bot.stop();
       context.db.close();
     } finally {

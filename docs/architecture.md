@@ -17,7 +17,7 @@ batas modul yang harus dijaga saat menambah fitur.
 ## Alur pesan
 
 ```text
-WhatsApp  ⇄  OnigiBaileys  ⇄  WhatsAppAdapter
+WhatsApp  ⇄  onigis  ⇄  WhatsAppAdapter
                                      │ InternalMessage
                                      ▼
                              ┌──────────────┐
@@ -92,9 +92,11 @@ berjalan agar percakapan dasar tidak mati.
    “setuju selalu”).
 3. `ApprovalEngine.create()` menyimpan request: UUID, kode pendek `#A7F3`, pemohon, role,
    tool, **parameter asli**, chat asal, waktu dibuat, kedaluwarsa (default 5 menit).
-4. `Bot` mengirim DM ke Owner lewat `adapter.sendApproval()`; fallback teks jika gagal.
+4. `Bot` mengirim DM ke Owner lewat `adapter.sendApproval()` — tombol interaktif
+   (`onigis` rich-classic) dengan teks fallback berisi command.
 5. Hanya JID Owner yang dikonfigurasi dapat memutuskan. Keputusan diverifikasi di engine,
-   bukan dari teks AI.
+   bukan dari teks AI. Owner dapat memakai tombol WhatsApp atau command
+   `.approve/.reject/.always <kode>` yang diproses `CommandRegistry`.
 6. `approve` / `always` menjalankan tool lewat decision handler milik `Bot`; `always`
    sekaligus membuat aturan `(tool, target)` tanpa kedaluwarsa.
 7. Hasil eksekusi dan keputusan masuk audit.
@@ -150,8 +152,9 @@ Panduan praktis: [plugins.md](plugins.md).
 ## Status implementasi
 
 - Core pipeline, permission, approval, audit, SQLite, API, dan Web UI shell: berjalan.
-- WhatsApp: `WhatsAppAdapter` sudah memenuhi kontrak tetapi `connect()`/`send()` masih
-  TODO karena paket `onigibaileys` belum tersedia di npm. Mode `mock` dipakai untuk
-  pengembangan.
+- WhatsApp: `WhatsAppAdapter` memakai `onigis` 10.1.0-rc.12 untuk koneksi/QR,
+  reconnect backoff, normalisasi pesan (termasuk LID→PN), kirim teks/media/reaction,
+  serta tombol approval + fallback command. Live memerlukan Linux x64/arm64 karena
+  E2EE native `oktz-signal`/`oktz-curve25519`; mode `mock` tetap dipakai di Windows/macOS.
 - Provider AI: hanya `MockProvider`; provider OpenAI-compatible/Gemini masuk M1.
-- Auth Web UI, Setup Wizard, tombol approval WhatsApp, dan media masuk M2–M4.
+- Auth Web UI, Setup Wizard, rehidrasi approval setelah restart, dan media masuk M2–M4.

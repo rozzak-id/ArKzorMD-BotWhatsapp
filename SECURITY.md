@@ -38,8 +38,11 @@ ArKzorMD mengendalikan akun WhatsApp nyata. Aset yang dilindungi:
   sampai login M3 selesai.
 - **Endpoint keputusan approval** memakai `ADMIN_TOKEN` sementara. Jika token kosong,
   endpoint mengembalikan 503. Gunakan token acak ≥ 16 karakter.
-- **Adapter WhatsApp belum terhubung.** Binding OnigiBaileys masih TODO. Mode `mock`
-  tidak boleh dipakai di produksi.
+- **Adapter WhatsApp live memerlukan Linux x64/arm64.** Adapter memakai `onigis`; paket
+  native E2EE tidak tersedia untuk Windows/macOS. Gunakan mode `mock` untuk pengembangan
+  di platform tersebut, dan jangan pakai mock di produksi.
+- **QR pairing adalah kredensial sementara.** Jangan membagikan screenshot QR atau isi
+  folder `data/whatsapp-auth`; keduanya bisa dipakai untuk mengakses akun.
 - **Executor approval belum rehidrasi setelah restart.** Request tetap tersimpan, tetapi
   eksekusi otomatis setelah restart belum diimplementasikan (M2).
 - **Provider AI asli belum ada.** Hanya `MockProvider`; jangan menganggap jawaban mock
@@ -56,7 +59,7 @@ ArKzorMD mengendalikan akun WhatsApp nyata. Aset yang dilindungi:
 - Backup folder `data/` dengan aman; folder berisi sesi WhatsApp dan database.
 - Tinjau audit log dan antrean approval secara berkala.
 - Cabut aturan “setuju selalu” yang tidak lagi dipakai.
-- Perbarui dependensi dan pin versi OnigiBaileys setelah audit.
+- Perbarui dependensi dan pin versi `onigis` setelah audit.
 
 ## Risiko pemblokiran WhatsApp
 

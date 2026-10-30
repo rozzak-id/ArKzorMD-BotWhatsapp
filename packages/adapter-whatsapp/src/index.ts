@@ -1,47 +1,341 @@
+import { readFile } from 'node:fs/promises';
+import { basename } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import type {
   ApprovalRequest,
   ConnectionStatus,
   InternalMessage,
   Logger,
+  MediaAttachment,
   MessageHandler,
   OutgoingContent,
   PlatformAdapter,
   PlatformCapabilities,
 } from '@arkzormd/core';
 import { PlatformNotConnectedError } from '@arkzormd/core';
+import type {
+  AnyMessageContent,
+  ConnectionState,
+  WAMessage,
+  WASocket,
+} from 'onigis';
 
-export class OnigiBaileysMissingError extends Error {
-  constructor(moduleName: string) {
+type OnigisModule = typeof import('onigis');
+
+interface RichClassicModule {
+  buildButtonsMessage?: (options: {
+    text: string;
+    footer?: string;
+    buttons: Array<{ buttonId: string; buttonText: string }>;
+  }) => unknown;
+  sendClassicMessage?: (
+    socket: WASocket,
+    jid: string,
+    content: unknown,
+    options?: Record<string, unknown>,
+  ) => Promise<unknown>;
+}
+
+interface RecentMessage {
+  message: WAMessage;
+  senderId: string;
+}
+
+export class WhatsAppModuleMissingError extends Error {
+  constructor(moduleName: string, cause?: unknown) {
     super(
-      `Paket "${moduleName}" tidak ditemukan. Pasang fork OnigiBaileys terlebih dahulu, ` +
-        'lalu sambungkan adapter ini. Untuk pengembangan, gunakan WHATSAPP_MODE=mock.',
+      `Paket "${moduleName}" tidak dapat dimuat. Jalankan npm install, lalu coba lagi. ` +
+        'Untuk pengembangan tanpa WhatsApp, gunakan WHATSAPP_MODE=mock.',
+      { cause },
     );
-    this.name = 'OnigiBaileysMissingError';
+    this.name = 'WhatsAppModuleMissingError';
   }
 }
 
 export interface WhatsAppAdapterOptions {
   authDir: string;
   logger: Logger;
-  /** Nama modul fork; bisa diganti saat paket resmi OnigiBaileys tersedia. */
+  /** Nama modul; default `onigis` (fork Onigi/Baileys). */
   moduleName?: string;
+  /** Prefix command untuk tombol approval; default `.`. */
+  commandPrefix?: string;
   onQr?: (qr: string) => void;
   onStatusChange?: (status: ConnectionStatus) => void;
 }
 
-interface OnigiBaileysLike {
-  makeWASocket?: (...args: unknown[]) => unknown;
-  useMultiFileAuthState?: (dir: string) => Promise<unknown>;
-  [key: string]: unknown;
+const MAX_RECENT_MESSAGES = 200;
+const MAX_SEEN_IDS = 1_000;
+
+/** Normalisasi JID ke bentuk user@server tanpa suffix device. */
+export function normalizeUserJid(jid: string): string {
+  const value = jid.trim();
+  const at = value.indexOf('@');
+  if (at < 0) return value;
+  const user = value.slice(0, at).split(':')[0] ?? '';
+  return `${user}${value.slice(at)}`;
+}
+
+export function isGroupJid(jid: string): boolean {
+  return jid.endsWith('@g.us');
+}
+
+export function isPnJid(jid: string): boolean {
+  return jid.endsWith('@s.whatsapp.net') || jid.endsWith('@hosted');
+}
+
+export function isLidJid(jid: string): boolean {
+  return jid.endsWith('@lid') || jid.endsWith('@hosted.lid');
+}
+
+function isIgnoredJid(jid: string): boolean {
+  return (
+    jid === 'status@broadcast' ||
+    jid.endsWith('@newsletter') ||
+    jid.endsWith('@broadcast')
+  );
+}
+
+function sameUser(a: string, b: string): boolean {
+  return normalizeUserJid(a) === normalizeUserJid(b);
+}
+
+function pickSenderJid(primary: string, alt?: string | null): string {
+  const normalized = normalizeUserJid(primary);
+  if (isPnJid(normalized)) return normalized;
+  if (alt) {
+    const normalizedAlt = normalizeUserJid(alt);
+    if (isPnJid(normalizedAlt)) return normalizedAlt;
+  }
+  return normalized;
+}
+
+function toNumber(value: unknown): number | undefined {
+  if (typeof value === 'number' && Number.isFinite(value)) return value;
+  if (value && typeof value === 'object' && 'toNumber' in value) {
+    const fn = (value as { toNumber?: () => number }).toNumber;
+    if (typeof fn === 'function') {
+      const result = fn.call(value);
+      if (Number.isFinite(result)) return result;
+    }
+  }
+  if (typeof value === 'string' && value.trim() !== '') {
+    const result = Number(value);
+    if (Number.isFinite(result)) return result;
+  }
+  return undefined;
+}
+
+function guessFileName(source: string): string {
+  try {
+    const clean = source.split('?')[0] ?? source;
+    const path = clean.startsWith('file://') ? fileURLToPath(clean) : clean;
+    return basename(path) || 'dokumen';
+  } catch {
+    return 'dokumen';
+  }
+}
+
+function unwrapContent(
+  content: Record<string, unknown> | null | undefined,
+  depth = 0,
+): Record<string, unknown> | undefined {
+  if (!content || depth > 4) return undefined;
+  const wrappers = [
+    'ephemeralMessage',
+    'viewOnceMessage',
+    'viewOnceMessageV2',
+    'viewOnceMessageV2Extension',
+    'documentWithCaptionMessage',
+  ] as const;
+  for (const wrapper of wrappers) {
+    const inner = content[wrapper] as { message?: Record<string, unknown> } | undefined;
+    if (inner?.message) return unwrapContent(inner.message, depth + 1);
+  }
+  return content;
+}
+
+function contextInfoOf(content: Record<string, unknown>): Record<string, unknown> | undefined {
+  for (const value of Object.values(content)) {
+    if (value && typeof value === 'object' && 'contextInfo' in value) {
+      return (value as { contextInfo?: Record<string, unknown> }).contextInfo;
+    }
+  }
+  return undefined;
+}
+
+/** Ambil teks yang bisa dibaca dari content WhatsApp. */
+export function extractText(content: Record<string, unknown> | null | undefined): string {
+  const message = unwrapContent(content);
+  if (!message) return '';
+
+  const direct = message.conversation;
+  if (typeof direct === 'string' && direct.length > 0) return direct;
+
+  const extended = message.extendedTextMessage as { text?: unknown } | undefined;
+  if (typeof extended?.text === 'string') return extended.text;
+
+  for (const key of ['imageMessage', 'videoMessage', 'documentMessage'] as const) {
+    const media = message[key] as { caption?: unknown } | undefined;
+    if (typeof media?.caption === 'string') return media.caption;
+  }
+
+  const buttonReply = message.buttonsResponseMessage as { selectedButtonId?: unknown } | undefined;
+  if (typeof buttonReply?.selectedButtonId === 'string') return buttonReply.selectedButtonId;
+
+  const listReply = message.listResponseMessage as
+    | { title?: unknown; singleSelectReply?: { selectedRowId?: unknown } }
+    | undefined;
+  if (typeof listReply?.singleSelectReply?.selectedRowId === 'string') {
+    return listReply.singleSelectReply.selectedRowId;
+  }
+  if (typeof listReply?.title === 'string') return listReply.title;
+
+  const templateReply = message.templateButtonReplyMessage as
+    | { selectedId?: unknown }
+    | undefined;
+  if (typeof templateReply?.selectedId === 'string') return templateReply.selectedId;
+
+  const interactive = message.interactiveResponseMessage as
+    | { nativeFlowResponseMessage?: { paramsJson?: unknown } }
+    | undefined;
+  const paramsJson = interactive?.nativeFlowResponseMessage?.paramsJson;
+  if (typeof paramsJson === 'string') {
+    try {
+      const parsed = JSON.parse(paramsJson) as { id?: unknown };
+      if (typeof parsed.id === 'string') return parsed.id;
+    } catch {
+      // abaikan payload yang bukan JSON
+    }
+  }
+
+  return '';
+}
+
+function extractMedia(content: Record<string, unknown>): MediaAttachment[] {
+  const message = unwrapContent(content);
+  if (!message) return [];
+
+  const result: MediaAttachment[] = [];
+  const kinds = [
+    ['imageMessage', 'image'],
+    ['audioMessage', 'audio'],
+    ['videoMessage', 'video'],
+    ['documentMessage', 'document'],
+    ['stickerMessage', 'sticker'],
+  ] as const;
+
+  for (const [key, kind] of kinds) {
+    const media = message[key] as
+      | {
+          mimetype?: unknown;
+          caption?: unknown;
+          fileName?: unknown;
+          title?: unknown;
+          fileLength?: unknown;
+        }
+      | undefined;
+    if (!media) continue;
+    result.push({
+      kind,
+      mimeType: typeof media.mimetype === 'string' ? media.mimetype : undefined,
+      fileName:
+        typeof media.fileName === 'string'
+          ? media.fileName
+          : typeof media.title === 'string'
+            ? media.title
+            : undefined,
+      caption: typeof media.caption === 'string' ? media.caption : undefined,
+      sizeBytes: toNumber(media.fileLength),
+    });
+  }
+  return result;
+}
+
+/** Ubah WAMessage onigis menjadi InternalMessage netral platform. */
+export function normalizeIncomingMessage(
+  raw: WAMessage,
+  options: { botJid?: string | null } = {},
+): InternalMessage | null {
+  const key = raw.key;
+  if (!key?.remoteJid || !key.id || key.fromMe) return null;
+
+  const chatId = normalizeUserJid(key.remoteJid);
+  if (isIgnoredJid(chatId)) return null;
+
+  const content = unwrapContent(raw.message as Record<string, unknown> | null | undefined);
+  if (!content) return null;
+
+  // Pesan sistem/protokol dan reaksi bukan percakapan.
+  if (
+    content.protocolMessage ||
+    content.senderKeyDistributionMessage ||
+    content.reactionMessage ||
+    content.pollUpdateMessage
+  ) {
+    return null;
+  }
+
+  const text = extractText(content);
+  const media = extractMedia(content);
+  if (!text && media.length === 0) return null;
+
+  const isGroup = isGroupJid(chatId);
+  const primarySender = isGroup
+    ? (key.participant ?? key.participantAlt ?? chatId)
+    : chatId;
+  const senderAlt = isGroup ? (key.participantAlt ?? key.remoteJidAlt) : key.remoteJidAlt;
+  const senderId = pickSenderJid(primarySender, senderAlt);
+  const contextInfo = contextInfoOf(content);
+  const quotedContent = unwrapContent(
+    contextInfo?.quotedMessage as Record<string, unknown> | null | undefined,
+  );
+  const quotedSender =
+    typeof contextInfo?.participant === 'string'
+      ? pickSenderJid(contextInfo.participant)
+      : chatId;
+  const quotedId = typeof contextInfo?.stanzaId === 'string' ? contextInfo.stanzaId : undefined;
+  const quotedText = quotedContent ? extractText(quotedContent) : '';
+
+  const mentioned = Array.isArray(contextInfo?.mentionedJid)
+    ? contextInfo.mentionedJid.filter((jid): jid is string => typeof jid === 'string')
+    : [];
+
+  const timestampSeconds = toNumber(raw.messageTimestamp);
+  const timestamp =
+    timestampSeconds && timestampSeconds > 0 ? timestampSeconds * 1_000 : Date.now();
+
+  return {
+    id: key.id,
+    platform: 'whatsapp',
+    chatId,
+    chatType: isGroup ? 'group' : 'private',
+    senderId,
+    senderName: raw.pushName ?? undefined,
+    isGroup,
+    text,
+    media,
+    ...(quotedId
+      ? {
+          quoted: {
+            id: quotedId,
+            senderId: quotedSender,
+            text: quotedText || undefined,
+            fromBot: Boolean(options.botJid && sameUser(quotedSender, options.botJid)),
+          },
+        }
+      : {}),
+    mentions: mentioned.map(normalizeUserJid),
+    timestamp,
+    fromBot: false,
+  };
 }
 
 /**
- * Adapter WhatsApp berbasis OnigiBaileys.
+ * Adapter WhatsApp berbasis `onigis` (fork Baileys 7 + E2EE MIT).
  *
- * Status M0: seam adapter sudah ada, tetapi binding socket belum diaktifkan
- * karena paket `onigibaileys` belum tersedia di registry. Saat fork tersedia,
- * lengkapi `connect()` dan normalisasi pesan di file ini — core tidak perlu
- * diubah.
+ * Catatan platform: paket native `oktz-signal`/`oktz-curve25519` hanya
+ * menyediakan prebuild Linux x64/arm64. Import dan pembuatan pesan berjalan di
+ * Windows/macOS, tetapi koneksi live akan gagal pada enkripsi pertama.
  */
 export class WhatsAppAdapter implements PlatformAdapter {
   readonly id = 'whatsapp' as const;
@@ -53,50 +347,131 @@ export class WhatsAppAdapter implements PlatformAdapter {
 
   private handler: MessageHandler | null = null;
   private status: ConnectionStatus = 'disconnected';
-  private socket: unknown = null;
+  private socket: WASocket | null = null;
+  private module: OnigisModule | null = null;
+  private saveCreds: (() => Promise<void>) | null = null;
+  private connecting: Promise<void> | null = null;
+  private reconnectTimer: NodeJS.Timeout | null = null;
+  private reconnectAttempt = 0;
+  private manualDisconnect = false;
+  private qr: string | null = null;
+  private botJid: string | null = null;
+  private lastError: string | null = null;
   private readonly moduleName: string;
+  private readonly commandPrefix: string;
+  private readonly recent = new Map<string, RecentMessage>();
+  private readonly seen = new Set<string>();
 
   constructor(private readonly options: WhatsAppAdapterOptions) {
-    this.moduleName = options.moduleName ?? 'onigibaileys';
+    this.moduleName = options.moduleName ?? 'onigis';
+    this.commandPrefix = options.commandPrefix ?? '.';
   }
 
   async connect(): Promise<void> {
-    this.setStatus('connecting');
-    let module: OnigiBaileysLike;
-    try {
-      // Specifier dinamis agar TypeScript tidak gagal saat paket belum terpasang.
-      const specifier = this.moduleName;
-      module = (await import(specifier)) as OnigiBaileysLike;
-    } catch {
-      this.setStatus('error');
-      throw new OnigiBaileysMissingError(this.moduleName);
-    }
+    if (this.status === 'connected' || this.socket) return;
+    if (this.connecting) return this.connecting;
 
-    if (typeof module.makeWASocket !== 'function') {
-      this.setStatus('error');
-      throw new Error(
-        `Modul "${this.moduleName}" tidak mengekspor makeWASocket. Periksa versi fork OnigiBaileys.`,
+    this.manualDisconnect = false;
+    this.connecting = this.doConnect()
+      .catch((error: unknown) => {
+        this.qr = null;
+        this.lastError = error instanceof Error ? error.message : String(error);
+        this.setStatus('error');
+        this.options.logger.error({ err: error }, 'Koneksi WhatsApp gagal dimulai');
+        throw error;
+      })
+      .finally(() => {
+        this.connecting = null;
+      });
+    return this.connecting;
+  }
+
+  private isNativeEngineError(error: unknown): boolean {
+    if (!error || typeof error !== 'object' || !('code' in error)) return false;
+    const code = (error as { code?: unknown }).code;
+    return code === 'ONIGI_XEDDSA_UNSUPPORTED' || code === 'ONIGI_SIGNAL_ENGINE_UNSUPPORTED';
+  }
+
+  private async doConnect(): Promise<void> {
+    this.setStatus('connecting');
+    this.lastError = null;
+    if (process.platform !== 'linux') {
+      this.options.logger.warn(
+        { platform: process.platform },
+        'Native E2EE onigis hanya tersedia untuk Linux x64/arm64. ' +
+          'Jalankan WhatsApp live lewat Docker/WSL/Linux; mode mock tetap aman di platform ini.',
       );
     }
 
-    // TODO(M0): implementasikan alur koneksi berikut setelah paket tersedia:
-    // 1. const { state, saveCreds } = await module.useMultiFileAuthState(authDir)
-    // 2. const sock = module.makeWASocket({ auth: state, ... })
-    // 3. Teruskan QR ke options.onQr dan status koneksi ke options.onStatusChange.
-    // 4. Normalisasi pesan masuk ke InternalMessage lalu panggil handler.
-    // 5. Simpan kredensial, reconnect dengan exponential backoff.
-    this.options.logger.warn(
+    let mod: OnigisModule;
+    try {
+      mod = this.module ?? (await import(this.moduleName));
+      this.module = mod;
+    } catch (error) {
+      this.setStatus('error');
+      throw new WhatsAppModuleMissingError(this.moduleName, error);
+    }
+
+    if (typeof mod.makeWASocket !== 'function') {
+      this.setStatus('error');
+      throw new Error(`Modul "${this.moduleName}" tidak mengekspor makeWASocket.`);
+    }
+
+    const { state, saveCreds } = await mod.useMultiFileAuthState(this.options.authDir);
+    this.saveCreds = saveCreds;
+
+    const socket = mod.makeWASocket({
+      auth: state,
+      browser: ['Chrome', 'Desktop', '1.0.0'],
+      logger: this.options.logger,
+      syncFullHistory: false,
+      markOnlineOnConnect: true,
+      emitOwnEvents: false,
+      shouldIgnoreJid: (jid: string) => isIgnoredJid(jid),
+      getMessage: async (key) => {
+        const id = key.id;
+        return id ? this.recent.get(id)?.message.message ?? undefined : undefined;
+      },
+    });
+
+    this.socket = socket;
+    if (socket.user?.id) this.botJid = normalizeUserJid(socket.user.id);
+
+    socket.ev.on('creds.update', saveCreds);
+    socket.ev.on('connection.update', (update) => this.handleConnectionUpdate(update));
+    socket.ev.on('messages.upsert', (event) => {
+      void this.handleMessages(event.messages).catch((error: unknown) => {
+        this.options.logger.error({ err: error }, 'Gagal memproses batch pesan WhatsApp');
+      });
+    });
+    socket.ev.on('error', (error) => {
+      this.options.logger.error({ err: error }, 'Error socket WhatsApp');
+    });
+
+    this.options.logger.info(
       { module: this.moduleName, authDir: this.options.authDir },
-      'OnigiBaileys terpasang, tetapi binding adapter belum diimplementasikan (M0)',
-    );
-    this.setStatus('error');
-    throw new Error(
-      'Binding OnigiBaileys belum diimplementasikan. Lengkapi WhatsAppAdapter.connect() pada M0.',
+      'Socket WhatsApp dibuat; menunggu QR/koneksi',
     );
   }
 
   async disconnect(): Promise<void> {
+    this.manualDisconnect = true;
+    this.qr = null;
+    this.lastError = null;
+    if (this.reconnectTimer) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = null;
+    }
+
+    const socket = this.socket;
     this.socket = null;
+    if (socket) {
+      try {
+        await socket.end(undefined);
+      } catch (error) {
+        this.options.logger.warn({ err: error }, 'Gagal menutup socket WhatsApp');
+      }
+    }
     this.setStatus('disconnected');
   }
 
@@ -105,29 +480,117 @@ export class WhatsAppAdapter implements PlatformAdapter {
   }
 
   async send(chatId: string, content: OutgoingContent): Promise<void> {
-    if (this.status !== 'connected' || !this.socket) {
-      throw new PlatformNotConnectedError('WhatsApp');
-    }
-    // TODO(M0): kirim lewat socket OnigiBaileys, termasuk typing, media,
-    // reaction, dan reply. `content` sudah dalam format netral.
-    this.options.logger.debug({ chatId, content }, 'WhatsAppAdapter.send belum diimplementasikan');
-    throw new Error('WhatsAppAdapter.send belum diimplementasikan (M0).');
+    const socket = this.requireSocket();
+    const quoted = content.replyTo ? this.recent.get(content.replyTo)?.message : undefined;
+
+    await this.withPresence(chatId, async () => {
+      if (content.reaction) {
+        const target = this.recent.get(content.reaction.messageId);
+        await socket.sendMessage(chatId, {
+          react: {
+            text: content.reaction.emoji,
+            key: {
+              remoteJid: chatId,
+              id: content.reaction.messageId,
+              fromMe: false,
+              ...(isGroupJid(chatId) && target ? { participant: target.senderId } : {}),
+            },
+          },
+        });
+      }
+
+      if (content.media && content.media.length > 0) {
+        let sentMedia = false;
+        let captionUsed = false;
+        for (const media of content.media) {
+          const mediaCaption = captionUsed ? undefined : (content.text ?? media.caption);
+          const mediaContent = await this.buildMediaContent(media, mediaCaption);
+          if (!mediaContent) continue;
+          sentMedia = true;
+          if ('caption' in mediaContent) captionUsed = true;
+          await socket.sendMessage(chatId, mediaContent, quoted ? { quoted } : undefined);
+        }
+        if (content.text && (!sentMedia || !captionUsed)) {
+          await socket.sendMessage(chatId, { text: content.text }, quoted ? { quoted } : undefined);
+        }
+        return;
+      }
+
+      if (content.text) {
+        await socket.sendMessage(chatId, { text: content.text }, quoted ? { quoted } : undefined);
+      }
+    });
   }
 
   async sendApproval(ownerId: string, request: ApprovalRequest): Promise<void> {
-    // TODO(M2): tombol interaktif Setuju/Tolak/Setuju selalu.
-    // Fallback teks sudah disiapkan di Bot, jadi minimal kirim teks ini.
-    await this.send(ownerId, {
-      text:
-        `🔐 Persetujuan ${request.shortCode}\n` +
-        `Aksi: ${request.toolName}\n` +
-        `Detail: ${JSON.stringify(request.params)}\n\n` +
-        'Balas 1 = setuju, 2 = tolak.',
+    const socket = this.requireSocket();
+    const expiry = new Date(request.expiresAt).toLocaleTimeString('id-ID', {
+      hour: '2-digit',
+      minute: '2-digit',
     });
+    const text = [
+      `🔐 *Persetujuan ${request.shortCode}*`,
+      `Dari: ${request.requesterRole} (${request.requesterJid})`,
+      `Aksi: ${request.toolName}`,
+      `Detail: ${JSON.stringify(request.params)}`,
+      `Berlaku sampai: ${expiry}`,
+      '',
+      `Balas \`${this.commandPrefix}approve ${request.shortCode}\` untuk setuju, ` +
+        `\`${this.commandPrefix}reject ${request.shortCode}\` untuk tolak, atau ` +
+        `\`${this.commandPrefix}always ${request.shortCode}\` untuk setuju selalu.`,
+    ].join('\n');
+
+    const rich = this.module as unknown as RichClassicModule;
+    if (typeof rich.buildButtonsMessage === 'function' && typeof rich.sendClassicMessage === 'function') {
+      try {
+        const content = rich.buildButtonsMessage({
+          text,
+          footer: 'ArKzorMD · persetujuan Owner',
+          buttons: [
+            {
+              buttonId: `${this.commandPrefix}approve ${request.shortCode}`,
+              buttonText: 'Setuju',
+            },
+            {
+              buttonId: `${this.commandPrefix}reject ${request.shortCode}`,
+              buttonText: 'Tolak',
+            },
+            {
+              buttonId: `${this.commandPrefix}always ${request.shortCode}`,
+              buttonText: 'Selalu',
+            },
+          ],
+        });
+        await rich.sendClassicMessage(socket, ownerId, content);
+        return;
+      } catch (error) {
+        this.options.logger.warn(
+          { err: error, code: request.shortCode },
+          'Tombol approval gagal dikirim; memakai teks fallback',
+        );
+      }
+    }
+
+    await this.send(ownerId, { text });
   }
 
   getStatus(): ConnectionStatus {
     return this.status;
+  }
+
+  /** QR terbaru (base64 payload) atau null bila sudah tersambung. */
+  getQr(): string | null {
+    return this.qr;
+  }
+
+  /** JID bot yang sedang login, mis. `628...@s.whatsapp.net`. */
+  getBotJid(): string | null {
+    return this.botJid;
+  }
+
+  /** Pesan error koneksi terakhir, atau null. */
+  getLastError(): string | null {
+    return this.lastError;
   }
 
   /** Dipanggil adapter saat pesan masuk telah dinormalisasi. */
@@ -135,7 +598,217 @@ export class WhatsAppAdapter implements PlatformAdapter {
     void this.handler?.(message);
   }
 
+  private requireSocket(): WASocket {
+    if (this.status !== 'connected' || !this.socket) {
+      throw new PlatformNotConnectedError('WhatsApp');
+    }
+    return this.socket;
+  }
+
+  private async withPresence(chatId: string, action: () => Promise<void>): Promise<void> {
+    const socket = this.socket;
+    if (!socket) throw new PlatformNotConnectedError('WhatsApp');
+    try {
+      await socket.sendPresenceUpdate('composing', chatId);
+    } catch {
+      // presence bukan kritikal
+    }
+    try {
+      await action();
+    } finally {
+      try {
+        await socket.sendPresenceUpdate('paused', chatId);
+      } catch {
+        // abaikan
+      }
+    }
+  }
+
+  private async buildMediaContent(
+    media: MediaAttachment,
+    caption: string | undefined,
+  ): Promise<AnyMessageContent | null> {
+    if (!media.source) return null;
+
+    const source = await this.loadMediaSource(media.source);
+    switch (media.kind) {
+      case 'image':
+        return { image: source, ...(caption ? { caption } : {}) };
+      case 'video':
+        return { video: source, ...(caption ? { caption } : {}) };
+      case 'audio':
+        return {
+          audio: source,
+          mimetype: media.mimeType ?? 'audio/ogg; codecs=opus',
+          ptt: media.mimeType?.includes('ogg') ?? true,
+        };
+      case 'document':
+        return {
+          document: source,
+          mimetype: media.mimeType ?? 'application/octet-stream',
+          fileName: media.fileName ?? guessFileName(media.source ?? ''),
+          ...(caption ? { caption } : {}),
+        };
+      case 'sticker':
+        return { sticker: source };
+      default:
+        return null;
+    }
+  }
+
+  private async loadMediaSource(source: string): Promise<{ url: string } | Buffer> {
+    if (/^https?:\/\//i.test(source)) return { url: source };
+    const path = source.startsWith('file://') ? fileURLToPath(source) : source;
+    return readFile(path);
+  }
+
+  private handleConnectionUpdate(update: Partial<ConnectionState>): void {
+    if (update.qr) {
+      this.qr = update.qr;
+      this.setStatus('connecting');
+      this.options.logger.info(
+        'QR WhatsApp tersedia. Buka Web UI > Koneksi WhatsApp untuk memindai.',
+      );
+      this.options.onQr?.(update.qr);
+    }
+
+    if (update.connection === 'open') {
+      this.qr = null;
+      this.lastError = null;
+      this.reconnectAttempt = 0;
+      if (this.socket?.user?.id) {
+        this.botJid = normalizeUserJid(this.socket.user.id);
+      }
+      this.setStatus('connected');
+      this.options.logger.info({ jid: this.botJid }, 'WhatsApp tersambung');
+      return;
+    }
+
+    if (update.connection === 'close') {
+      this.qr = null;
+      const error = update.lastDisconnect?.error as
+        | { code?: string; output?: { statusCode?: number }; message?: string }
+        | undefined;
+      const statusCode = error?.output?.statusCode;
+      const engineUnsupported =
+        error?.code === 'ONIGI_SIGNAL_ENGINE_UNSUPPORTED' ||
+        error?.code === 'ONIGI_XEDDSA_UNSUPPORTED';
+
+      if (!this.manualDisconnect) {
+        this.lastError = error?.message ?? 'Koneksi WhatsApp terputus.';
+      }
+      this.socket = null;
+      const mod = this.module;
+      const loggedOut = statusCode === mod?.DisconnectReason.loggedOut;
+      const replaced = statusCode === mod?.DisconnectReason.connectionReplaced;
+      const forbidden =
+        statusCode === mod?.DisconnectReason.forbidden ||
+        statusCode === mod?.DisconnectReason.multideviceMismatch;
+
+      if (this.manualDisconnect || loggedOut || replaced || forbidden || engineUnsupported) {
+        this.setStatus(loggedOut || engineUnsupported || forbidden ? 'error' : 'disconnected');
+        this.options.logger.warn(
+          {
+            statusCode,
+            reason: error?.message,
+            loggedOut,
+            replaced,
+            forbidden,
+            engineUnsupported,
+          },
+          'Koneksi WhatsApp berhenti dan tidak akan disambungkan ulang otomatis',
+        );
+        return;
+      }
+
+      this.setStatus('connecting');
+      this.options.logger.warn(
+        { statusCode, reason: error?.message },
+        'Koneksi WhatsApp terputus; menjadwalkan reconnect',
+      );
+      this.scheduleReconnect();
+    }
+  }
+
+  private scheduleReconnect(): void {
+    if (this.manualDisconnect || this.reconnectTimer) return;
+
+    const attempt = this.reconnectAttempt;
+    this.reconnectAttempt += 1;
+    const base = Math.min(60_000, 1_000 * 2 ** Math.min(attempt, 6));
+    const delay = base + Math.floor(Math.random() * 500);
+    this.options.logger.info({ delay, attempt }, 'Reconnect WhatsApp dijadwalkan');
+
+    this.reconnectTimer = setTimeout(() => {
+      this.reconnectTimer = null;
+      void this.connect().catch((error: unknown) => {
+        this.options.logger.error({ err: error }, 'Reconnect WhatsApp gagal');
+        if (this.isNativeEngineError(error) || error instanceof WhatsAppModuleMissingError) {
+          this.options.logger.error(
+            'Reconnect dihentikan karena E2EE native tidak tersedia atau modul gagal dimuat.',
+          );
+          return;
+        }
+        this.scheduleReconnect();
+      });
+    }, delay);
+    this.reconnectTimer.unref?.();
+  }
+
+  private async handleMessages(messages: WAMessage[]): Promise<void> {
+    for (const raw of messages) {
+      await this.ingest(raw);
+    }
+  }
+
+  private async ingest(raw: WAMessage): Promise<void> {
+    const id = raw.key?.id;
+    if (id) {
+      if (this.seen.has(id)) return;
+      this.seen.add(id);
+      if (this.seen.size > MAX_SEEN_IDS) {
+        const oldest = this.seen.values().next().value;
+        if (oldest) this.seen.delete(oldest);
+      }
+    }
+
+    const message = normalizeIncomingMessage(raw, { botJid: this.botJid });
+    if (!message) return;
+
+    if (isLidJid(message.senderId) && this.socket) {
+      try {
+        const pn = await this.socket.signalRepository.lidMapping.getPNForLID(message.senderId);
+        if (pn) message.senderId = normalizeUserJid(pn);
+      } catch (error) {
+        this.options.logger.debug(
+          { err: error, jid: message.senderId },
+          'Gagal memetakan LID ke nomor telepon',
+        );
+      }
+    }
+
+    if (id) {
+      this.recent.set(id, { message: raw, senderId: message.senderId });
+      if (this.recent.size > MAX_RECENT_MESSAGES) {
+        const oldest = this.recent.keys().next().value;
+        if (oldest) this.recent.delete(oldest);
+      }
+    }
+
+    this.options.logger.debug(
+      {
+        chatId: message.chatId,
+        senderId: message.senderId,
+        isGroup: message.isGroup,
+        hasMedia: message.media.length > 0,
+      },
+      'Pesan WhatsApp masuk',
+    );
+    this.dispatch(message);
+  }
+
   private setStatus(status: ConnectionStatus): void {
+    if (this.status === status) return;
     this.status = status;
     this.options.onStatusChange?.(status);
   }
