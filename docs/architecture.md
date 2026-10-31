@@ -66,7 +66,7 @@ WhatsApp  ⇄  onigis  ⇄  WhatsAppAdapter
 | `PermissionEngine` | `security/permission-engine.ts` | Satu-satunya pemutus izin tool |
 | `ApprovalEngine` | `security/approval-engine.ts` | Antrean, TTL, keputusan Owner, aturan “setuju selalu”, eksekusi |
 | `AgentOrchestrator` | `agent/agent.ts` | Menyusun konteks, memanggil provider, loop tool calling |
-| `AiProvider` | `agent/provider.ts` | Kontrak provider; `MockProvider` untuk M0 |
+| `AiProvider` | `agent/provider.ts` + `agent/*-provider.ts` | Kontrak; `MockProvider`, `OpenAiProvider`, `GeminiProvider` |
 | `ToolRegistry` | `tools/registry.ts` | Skema tool, level risiko, role, eksekusi |
 | `Humanizer` | `humanizer/humanizer.ts` | Jeda mengetik proporsional + jitter |
 | `RateLimiter` | `rate-limit/rate-limiter.ts` | Batas pesan keluar global dan per chat |
@@ -105,6 +105,36 @@ Catatan M0: executor approval belum dihidrasi ulang setelah restart. Parameter s
 tersimpan di database, sehingga M2 cukup membangun ulang eksekusi dari `tool_name` +
 `params` + `chat_id` tanpa mengubah skema.
 
+## Provider AI
+
+`AgentOrchestrator` hanya bergantung pada kontrak `AiProvider.complete()`. Provider
+menerima riwayat pesan, skema tool, temperature, dan batas token; provider tidak pernah
+mengambil keputusan izin.
+
+| Provider | Format | Catatan |
+| --- | --- | --- |
+| `MockProvider` | lokal | Untuk mode development dan tes pipeline tanpa jaringan |
+| `OpenAiProvider` | Chat Completions | OpenAI, OpenRouter, Ollama, vLLM, dan endpoint kompatibel lainnya |
+| `GeminiProvider` | `generateContent` | Google Gemini dengan `functionCall`/`functionResponse` |
+
+Detail implementasi:
+
+- **OpenAI-compatible:** `POST {OPENAI_BASE_URL}/chat/completions`; pesan `tool`
+  dikirim dengan `tool_call_id`; respons `tool_calls` dipetakan ke `AiToolCall`.
+  `function_call` legacy juga didukung.
+- **Gemini:** `POST {GEMINI_BASE_URL}/models/{model}:generateContent`; pesan sistem
+  menjadi `systemInstruction`; tool result menjadi `functionResponse`; skema JSON
+  disaring ke subset OpenAPI Gemini; `thoughtSignature` disimpan di
+  `AiToolCall.providerData` agar valid saat dikirim kembali.
+- **Timeout:** satu request dibatasi `AI_TIMEOUT_MS` (default 60 detik) memakai
+  `AbortController`.
+- **Fallback model (FR-10):** `BaseAiProvider` mencoba `AI_FALLBACK_MODEL` sekali bila
+  model utama gagal dengan error yang bisa diulang: 404, 408, 409, 425, 429, 5xx,
+  timeout, atau jaringan. Error 400/401/403 tidak diulang.
+- **Keamanan:** API key dibaca dari environment, hanya dikirim ke endpoint provider
+  lewat header, dan disaring dari pesan error/log. Key tidak masuk prompt, audit, atau
+  Web UI.
+
 ## Skema database (v1)
 
 | Tabel | Isi |
@@ -134,7 +164,8 @@ tabel yang sudah dirilis.
   mengembalikan `ToolResult`.
 - **Web/API tidak boleh mengeksekusi tool langsung.** Gunakan `Bot`/`ApprovalEngine` agar
   audit dan izin tetap konsisten.
-- **Secret tidak pernah masuk prompt.** Provider hanya menerima pesan dan skema tool.
+- **Secret tidak pernah masuk prompt.** Provider hanya menerima pesan dan skema tool;
+  API key hanya dipakai untuk header request ke endpoint provider.
 
 ## Titik ekstensi
 
@@ -147,7 +178,10 @@ tabel yang sudah dirilis.
 | Persona | Tambah baris `personas`, aktifkan lewat store |
 | Plugin | Paket workspace yang mengekspor definisi command/tool |
 
-Panduan praktis: [plugins.md](plugins.md).
+Dokumen rujukan:
+- Panduan praktis plugin: [plugins.md](plugins.md)
+- Prompt agent & katalog tool: [agent-prompt-and-tools.md](agent-prompt-and-tools.md)
+- Spesifikasi produk & FR: [prd-arkzormd.md](prd-arkzormd.md)
 
 ## Status implementasi
 
@@ -156,5 +190,8 @@ Panduan praktis: [plugins.md](plugins.md).
   reconnect backoff, normalisasi pesan (termasuk LID→PN), kirim teks/media/reaction,
   serta tombol approval + fallback command. Live memerlukan Linux x64/arm64 karena
   E2EE native `oktz-signal`/`oktz-curve25519`; mode `mock` tetap dipakai di Windows/macOS.
-- Provider AI: hanya `MockProvider`; provider OpenAI-compatible/Gemini masuk M1.
-- Auth Web UI, Setup Wizard, rehidrasi approval setelah restart, dan media masuk M2–M4.
+- Provider AI: `OpenAiProvider` dan `GeminiProvider` aktif, dengan tool calling,
+  timeout, dan fallback model. `MockProvider` tetap menjadi default development.
+  API key masih dibaca dari `.env`; penyimpanan terenkripsi lewat Web UI masuk M3.
+- Auth Web UI, Setup Wizard, penyimpanan API key terenkripsi, rehidrasi approval
+  setelah restart, dan media masuk M3–M4.

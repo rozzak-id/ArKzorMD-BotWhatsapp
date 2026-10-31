@@ -6,10 +6,12 @@ cukup bicara biasa, AI memahami maksud dan menjalankan aksi lewat tool. Setiap a
 berisiko melewati **Permission Engine** dan **persetujuan Owner** yang ditegakkan oleh
 kode — bukan oleh AI.
 
-Status saat ini: **M0 — fondasi**. Struktur repo, core pipeline, permission/approval,
-SQLite, API server, Web UI, dan adapter WhatsApp berbasis **`onigis`** (fork Baileys 7
-dengan E2EE native MIT) sudah terpasang. Mode `mock` berjalan di semua OS; koneksi
-WhatsApp **live** memerlukan Linux x64/arm64 (Docker/WSL) karena paket E2EE native
+Status saat ini: **M1 — provider AI asli**. Fondasi M0 (repo, core pipeline,
+permission/approval, SQLite, API server, Web UI, dan adapter WhatsApp berbasis
+**`onigis`**) sudah terpasang. M1 menambahkan provider **OpenAI-compatible**
+(OpenAI, OpenRouter, Ollama, vLLM) dan **Gemini** dengan tool calling, timeout, serta
+fallback model. Mode `mock` tetap berjalan di semua OS; koneksi WhatsApp **live**
+memerlukan Linux x64/arm64 (Docker/WSL) karena paket E2EE native
 `oktz-signal`/`oktz-curve25519` hanya menyediakan prebuild Linux.
 
 > ⚠️ **Risiko akun WhatsApp.** Bot ini memakai protokol tidak resmi (Onigi/Baileys).
@@ -21,8 +23,10 @@ WhatsApp **live** memerlukan Linux x64/arm64 (Docker/WSL) karena paket E2EE nati
 - [Fitur yang sudah ada](#fitur-yang-sudah-ada)
 - [Persyaratan](#persyaratan)
 - [Mulai cepat](#mulai-cepat)
+- [Memilih provider AI](#memilih-provider-ai)
 - [Menjalankan dengan Docker](#menjalankan-dengan-docker)
 - [Struktur repo](#struktur-repo)
+- [Dokumentasi](#dokumentasi)
 - [Scripts](#scripts)
 - [Konfigurasi](#konfigurasi)
 - [Menguji pipeline tanpa WhatsApp](#menguji-pipeline-tanpa-whatsapp)
@@ -44,7 +48,8 @@ WhatsApp **live** memerlukan Linux x64/arm64 (Docker/WSL) karena paket E2EE nati
 | Web UI flat | ✅ (shell) | Dashboard live, persona, pengguna, approval, tools, audit, platform |
 | API + WebSocket | ✅ | Status real-time, endpoint approval ber-token |
 | Adapter WhatsApp | ✅ | `onigis` 10.1.0-rc.12: QR/pairing, reconnect backoff, teks/media/reaction, tombol approval + fallback command |
-| Provider AI asli | 🚧 | Antarmuka siap; implementasi OpenAI-compatible/Gemini di M1 |
+| Provider AI asli | ✅ | OpenAI-compatible (OpenAI/OpenRouter/Ollama) + Gemini, tool calling, timeout, fallback model |
+| Memori jangka pendek | ✅ | 20 pesan terakhir per chat; ringkasan otomatis menyusul |
 | Adapter Telegram/Discord | 🚧 stub | Kartu Coming Soon di Web UI |
 | Media (analisis gambar/VN) | ⏳ | M4/M6 |
 
@@ -89,6 +94,57 @@ Jalankan server di Linux/Docker/WSL, buka **Koneksi WhatsApp** di Web UI, lalu p
 dari menu WhatsApp → **Perangkat tertaut** → **Tautkan perangkat**. Sesi disimpan di
 `data/whatsapp-auth`; reconnect otomatis berjalan dengan backoff. Di Windows, koneksi
 live akan gagal saat enkripsi pertama — gunakan Docker/WSL.
+
+## Memilih provider AI
+
+Default `AI_PROVIDER=mock` tidak memanggil jaringan. Untuk mengobrol dengan model asli,
+pilih salah satu konfigurasi berikut di `.env`, lalu restart server. API key saat ini
+dibaca dari `.env`; penyimpanan terenkripsi lewat Web UI masuk M3.
+
+**OpenAI:**
+
+```dotenv
+AI_PROVIDER=openai
+AI_MODEL=gpt-4o-mini
+OPENAI_API_KEY=sk-...
+OPENAI_BASE_URL=https://api.openai.com/v1
+```
+
+**OpenRouter:**
+
+```dotenv
+AI_PROVIDER=openai
+AI_MODEL=openai/gpt-4o-mini
+OPENAI_API_KEY=sk-or-...
+OPENAI_BASE_URL=https://openrouter.ai/api/v1
+```
+
+**Ollama / endpoint lokal** (API key boleh kosong):
+
+```dotenv
+AI_PROVIDER=openai
+AI_MODEL=llama3.1
+OPENAI_API_KEY=
+OPENAI_BASE_URL=http://127.0.0.1:11434/v1
+```
+
+**Gemini:**
+
+```dotenv
+AI_PROVIDER=gemini
+AI_MODEL=gemini-2.5-flash
+GEMINI_API_KEY=...
+GEMINI_BASE_URL=https://generativelanguage.googleapis.com/v1beta
+```
+
+`AI_MODEL` boleh dikosongkan untuk memakai default provider. Tambahkan
+`AI_FALLBACK_MODEL` untuk model cadangan, misalnya `gpt-4o-mini` atau
+`gemini-2.5-pro`. Fallback dicoba hanya untuk error yang bisa diulang (429, 5xx,
+timeout, jaringan, atau model tidak ditemukan); error 400/401/403 tidak diulang.
+`AI_TIMEOUT_MS` mengatur batas waktu satu request (default 60 detik).
+
+Cek provider yang aktif lewat `GET /api/status` atau halaman **Dashboard**. API key
+tidak pernah dimasukkan ke prompt, log, audit, atau Web UI. Jangan commit `.env`.
 
 Build produksi:
 
@@ -146,16 +202,24 @@ arkzormd/
 │  ├─ example-command/         # contoh command plugin (.hello)
 │  └─ example-tool/            # contoh tool plugin (echo_note)
 ├─ docs/
+│  ├─ prd-arkzormd.md
 │  ├─ architecture.md
-│  └─ plugins.md
+│  ├─ plugins.md
+│  └─ agent-prompt-and-tools.md
 ├─ docker-compose.yml
 ├─ Dockerfile
 ├─ .env.example
 └─ README.md
 ```
 
-Penjelasan arsitektur: [docs/architecture.md](docs/architecture.md).  
-Panduan menambah command/tool: [docs/plugins.md](docs/plugins.md).
+## Dokumentasi
+
+Dokumentasi lengkap ArKzorMD tersimpan di folder [`docs/`](docs/):
+
+- [PRD ArKzorMD](docs/prd-arkzormd.md) — Dokumen spesifikasi kebutuhan produk, persona, kebutuhan fungsional (FR-01 s.d. FR-35), dan roadmap.
+- [Arsitektur Teknis](docs/architecture.md) — Alur pesan, batas modul, rincian komponen, provider AI, dan skema database.
+- [Panduan Command, Tool, dan Plugin](docs/plugins.md) — Panduan menulis command, tool, platform adapter, serta template plugin workspace.
+- [Prompt Agent dan Katalog Tool](docs/agent-prompt-and-tools.md) — System prompt siap pakai, aturan level risiko dinamis, katalog lengkap tool, dan kontrak hasil eksekusi.
 
 ## Scripts
 
@@ -187,7 +251,14 @@ Semua konfigurasi awal lewat `.env` (lihat `.env.example`). Nilai penting:
 | `WHATSAPP_MODE` | `mock` | `live`, `mock`, `off` |
 | `WHATSAPP_AUTOCONNECT` | `false` | `true` untuk langsung pairing/connect saat startup |
 | `WHATSAPP_MODULE` | `onigis` | Modul adapter WhatsApp; gunakan `onigis` |
-| `AI_PROVIDER` | `mock` | Hanya `mock` yang aktif di M0 |
+| `AI_PROVIDER` | `mock` | `mock`, `openai`, atau `gemini` |
+| `AI_MODEL` | per provider | Default: `mock`, `gpt-4o-mini` (OpenAI), `gemini-2.5-flash` (Gemini) |
+| `AI_FALLBACK_MODEL` | kosong | Model cadangan bila model utama gagal |
+| `AI_TIMEOUT_MS` | `60000` | Batas waktu satu request AI |
+| `OPENAI_API_KEY` | kosong | Wajib untuk OpenAI/OpenRouter; boleh kosong untuk Ollama lokal |
+| `OPENAI_BASE_URL` | `https://api.openai.com/v1` | Base URL endpoint kompatibel OpenAI |
+| `GEMINI_API_KEY` | kosong | Wajib untuk provider Gemini |
+| `GEMINI_BASE_URL` | `https://generativelanguage.googleapis.com/v1beta` | Base URL Gemini |
 
 Jangan commit `.env`. Secret tidak pernah dikirim ke prompt, log, atau Web UI; audit log
 menyaring kunci yang menyerupai token/API key.
@@ -253,7 +324,7 @@ Laporkan kerentanan sesuai [SECURITY.md](SECURITY.md).
 | Milestone | Status | Isi |
 | --- | --- | --- |
 | M0 Fondasi | 🚧 | Repo, core, adapter onigis, SQLite, role; live perlu verifikasi di Linux/Docker |
-| M1 AI Agent | ⏳ | Provider asli, persona, memori, fallback model |
+| M1 AI Agent | ✅ | Provider OpenAI-compatible/Gemini, persona, memori 20 pesan, tool calling, fallback model; ringkasan otomatis menyusul |
 | M2 Izin & approval | 🚧 | Engine + tombol/command WhatsApp selesai; rehidrasi antrean dan UI keputusan |
 | M3 Web UI | 🚧 | Shell selesai; auth, wizard, editor, aksi pengguna |
 | M4 Media | ⏳ | Analisis gambar, transkripsi voice note |

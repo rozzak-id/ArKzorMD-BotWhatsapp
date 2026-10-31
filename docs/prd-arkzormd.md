@@ -4,7 +4,9 @@ Versi 0.1 (Draft) · 30 Oktober 2026 · Pemilik produk: Alfitr · Siap diserahka
 
 ## 1. Ringkasan
 
-ArKzorMD adalah Bot AI WhatsApp open source bertipe hybrid. Bot bisa dipakai seperti bot pada umumnya (command berawalan titik, misalnya `.menu`), tetapi **AI menjadi pengendali utama**: pengguna cukup bicara biasa, AI memahami maksudnya, lalu memilih dan menjalankan aksi lewat tool. Bot berjalan di atas akun WhatsApp yang disambungkan lewat **OnigiBaileys**, dihost sendiri oleh pengguna, dan dikelola lewat Web UI bergaya flat.
+ArKzorMD adalah Bot AI WhatsApp open source bertipe hybrid. Bot bisa dipakai seperti bot pada umumnya (command berawalan titik, misalnya `.menu`), tetapi **AI menjadi pengendali utama**: pengguna cukup bicara biasa, AI memahami maksudnya, lalu memilih dan menjalankan aksi lewat tool. Bot berjalan di atas akun WhatsApp yang disambungkan lewat **onigis** (paket npm OnigiBaileys), dihost sendiri oleh pengguna, dan dikelola lewat Web UI bergaya flat.
+
+> **Catatan pustaka WhatsApp:** Kode menggunakan paket npm `onigis` (10.1.0-rc.12), yang merupakan paket resmi OnigiBaileys (fork Baileys 7 dengan integrasi native E2EE Rust/C). Di seluruh dokumen ini dan repo, penyebutan OnigiBaileys dan `onigis` merujuk pada paket yang sama.
 
 Karena bot punya akses luas ke akun WhatsApp-nya, setiap aksi berisiko wajib melewati sistem izin berbasis role dan persetujuan Owner. Telegram dan Discord ditandai **Coming Soon** pada rilis pertama.
 
