@@ -94,3 +94,18 @@ export interface SettingsStore {
   getNumber(key: string, fallback?: number): number;
   all(): Record<string, string>;
 }
+
+export interface MemoryNote {
+  id: number;
+  userJid: string;
+  note: string;
+  createdAt: number;
+}
+
+export interface MemoryStore {
+  save(userJid: string, note: string): MemoryNote;
+  search(userJid: string, query: string): MemoryNote[];
+  list(userJid: string): MemoryNote[];
+  delete(id: number): boolean;
+  clear(userJid: string): number;
+}

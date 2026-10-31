@@ -17,6 +17,8 @@ import type {
   ApprovalStore,
   AuditStore,
   ChatStore,
+  MemoryNote,
+  MemoryStore,
   MessageStore,
   PersonaStore,
   SettingsStore,
@@ -559,6 +561,69 @@ export class SqliteSettingsStore implements SettingsStore {
   }
 }
 
+export class SqliteMemoryStore implements MemoryStore {
+  constructor(private readonly db: Db) {}
+
+  save(userJid: string, note: string): MemoryNote {
+    const createdAt = now();
+    const result = this.db
+      .prepare('INSERT INTO memory_notes (user_jid, note, created_at) VALUES (?, ?, ?)')
+      .run(userJid, note, createdAt);
+    return {
+      id: Number(result.lastInsertRowid),
+      userJid,
+      note,
+      createdAt,
+    };
+  }
+
+  search(userJid: string, query: string): MemoryNote[] {
+    const rows = this.db
+      .prepare(
+        'SELECT * FROM memory_notes WHERE user_jid = ? AND note LIKE ? ORDER BY id DESC',
+      )
+      .all(userJid, `%${query}%`) as Array<{
+      id: number;
+      user_jid: string;
+      note: string;
+      created_at: number;
+    }>;
+    return rows.map((r) => ({
+      id: r.id,
+      userJid: r.user_jid,
+      note: r.note,
+      createdAt: r.created_at,
+    }));
+  }
+
+  list(userJid: string): MemoryNote[] {
+    const rows = this.db
+      .prepare('SELECT * FROM memory_notes WHERE user_jid = ? ORDER BY id DESC')
+      .all(userJid) as Array<{
+      id: number;
+      user_jid: string;
+      note: string;
+      created_at: number;
+    }>;
+    return rows.map((r) => ({
+      id: r.id,
+      userJid: r.user_jid,
+      note: r.note,
+      createdAt: r.created_at,
+    }));
+  }
+
+  delete(id: number): boolean {
+    const result = this.db.prepare('DELETE FROM memory_notes WHERE id = ?').run(id);
+    return result.changes > 0;
+  }
+
+  clear(userJid: string): number {
+    const result = this.db.prepare('DELETE FROM memory_notes WHERE user_jid = ?').run(userJid);
+    return result.changes;
+  }
+}
+
 export interface Stores {
   users: SqliteUserStore;
   personas: SqlitePersonaStore;
@@ -567,6 +632,7 @@ export interface Stores {
   approvals: SqliteApprovalStore;
   audit: SqliteAuditStore;
   settings: SqliteSettingsStore;
+  memory: SqliteMemoryStore;
 }
 
 export function createStores(db: Db): Stores {
@@ -578,5 +644,6 @@ export function createStores(db: Db): Stores {
     approvals: new SqliteApprovalStore(db),
     audit: new SqliteAuditStore(db),
     settings: new SqliteSettingsStore(db),
+    memory: new SqliteMemoryStore(db),
   };
 }

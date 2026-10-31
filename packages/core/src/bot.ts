@@ -54,6 +54,7 @@ export interface BotDependencies {
   audit: AuditLog;
   logger: Logger;
   aiProviderId: string;
+  memory?: any;
 }
 
 export interface HandleResult {
@@ -73,6 +74,7 @@ function bareJidUser(jid: string): string {
  */
 export class Bot {
   private readonly startedAt = Date.now();
+  private readonly executedApprovals = new Set<string>();
   private sweepTimer: NodeJS.Timeout | null = null;
 
   constructor(private readonly deps: BotDependencies) {}
@@ -471,6 +473,16 @@ export class Bot {
   }
 
   private async executeApproved(request: ApprovalRequest): Promise<ToolResult> {
+    const idempotencyKey = `${request.id || request.shortCode}:${request.toolName}:${JSON.stringify(request.params)}`;
+    if (this.executedApprovals.has(idempotencyKey)) {
+      return {
+        ok: true,
+        status: 'ok',
+        output: { alreadyExecuted: true, note: 'Aksi ini sudah dieksekusi sebelumnya.' },
+      };
+    }
+    this.executedApprovals.add(idempotencyKey);
+
     const tool = this.deps.tools.get(request.toolName);
     if (!tool) {
       throw new Error(`Tool ${request.toolName} tidak ditemukan.`);
@@ -482,6 +494,8 @@ export class Bot {
       senderId: request.requesterJid,
       role: request.requesterRole,
       params: request.params,
+      services: this.commandServices(),
+      isApprovalExecution: true,
     });
 
     const notification = result.ok
@@ -494,7 +508,7 @@ export class Bot {
     this.deps.audit.record({
       actorJid: this.deps.config.ownerJid,
       action: 'tool.executed_via_approval',
-      params: { tool: request.toolName, code: request.shortCode },
+      params: { tool: request.toolName, code: request.shortCode, params: request.params },
       result,
     });
 

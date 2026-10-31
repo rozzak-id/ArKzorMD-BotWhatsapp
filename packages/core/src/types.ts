@@ -184,6 +184,32 @@ export interface ChatRecord {
   updatedAt: number;
 }
 
+export type ToolCategory =
+  | 'message_media'
+  | 'read_context'
+  | 'group_community'
+  | 'chat_management'
+  | 'profile_privacy'
+  | 'channel_broadcast'
+  | 'ai_media'
+  | 'web_utility'
+  | 'memory'
+  | 'bot_control';
+
+export type ToolPriority = 'P0' | 'P1' | 'P2';
+
+export interface ToolScopeRule {
+  when: string;
+  level: RiskLevel;
+}
+
+export interface ToolRateLimit {
+  perMinute?: number;
+  perChatPerMinute?: number;
+}
+
+export type ToolResultStatus = 'ok' | 'pending_approval' | 'denied' | 'error';
+
 export interface ToolSchema {
   name: string;
   description: string;
@@ -191,12 +217,23 @@ export interface ToolSchema {
   parameters: Record<string, unknown>;
   risk: RiskLevel;
   allowedRoles: Role[];
+  category?: ToolCategory;
+  minRole?: Role;
+  implemented?: boolean;
+  priority?: ToolPriority;
 }
 
 export interface ToolResult {
   ok: boolean;
+  status?: ToolResultStatus;
   output?: unknown;
   error?: string;
+  errorCode?: string;
+  reason?: string;
+  approvalId?: string;
+  code?: string;
+  expiresAt?: number;
+  retryable?: boolean;
 }
 
 /** Informasi minimal yang dibutuhkan tool saat dieksekusi. */
@@ -207,9 +244,32 @@ export interface ToolContext {
   role: Role;
   params: Record<string, unknown>;
   message?: InternalMessage;
+  services?: any;
+  /** Ditandai true hanya jika dieksekusi lewat callback ApprovalEngine. */
+  isApprovalExecution?: boolean;
 }
 
-/** Tool lengkap: metadata keamanan + implementasi eksekusi. */
-export interface ToolDefinition extends ToolSchema {
-  execute(context: ToolContext): Promise<ToolResult>;
+/** Tool lengkap: metadata keamanan + implementasi eksekusi sesuai Bagian 5. */
+export interface ToolDefinition {
+  name: string;
+  category: ToolCategory;
+  /** Deskripsi fungsi dalam bahasa Inggris untuk pemanggilan AI yang akurat. */
+  description: string;
+  /** JSON Schema dengan additionalProperties: false. */
+  params: Record<string, unknown>;
+  baseLevel: RiskLevel;
+  scopeRules: ToolScopeRule[];
+  minRole: Role;
+  rateLimit?: ToolRateLimit;
+  relaxable: boolean;
+  audit: boolean;
+  priority: ToolPriority;
+  implemented: boolean;
+  handler?: (context: ToolContext) => Promise<ToolResult>;
+
+  // Kompatibilitas dengan ToolSchema / v0.1 API lama
+  parameters?: Record<string, unknown>;
+  risk?: RiskLevel;
+  allowedRoles?: Role[];
+  execute?(context: ToolContext): Promise<ToolResult>;
 }

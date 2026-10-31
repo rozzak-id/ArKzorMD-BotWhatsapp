@@ -80,7 +80,9 @@ export class MockProvider implements AiProvider {
     const toolResults = request.messages.filter((message) => message.role === 'tool');
     if (toolResults.length > 0) {
       const last = toolResults[toolResults.length - 1];
-      const pending = last?.content.includes('pendingApproval') ?? false;
+      const pending =
+        (last?.content.includes('pendingApproval') ||
+          last?.content.includes('pending_approval')) ?? false;
       return {
         text: pending
           ? 'Permintaanmu sudah aku ajukan ke Owner. Tunggu persetujuan sebentar ya.'
@@ -94,13 +96,18 @@ export class MockProvider implements AiProvider {
 
     const available = new Set(request.tools.map((tool) => tool.name));
     const sendMatch = /kirim(?:\s+pesan)?\s+ke\s+(\+?[\d][\d\s-]{6,})[:\s]+(.+)/i.exec(lastUser);
-    if (sendMatch && available.has('send_message')) {
+    const chosenSendTool = available.has('send_message')
+      ? 'send_message'
+      : available.has('wa.send_text')
+        ? 'wa.send_text'
+        : null;
+    if (sendMatch && chosenSendTool) {
       return {
         text: '',
         toolCalls: [
           {
             id: `mock-${Date.now()}`,
-            name: 'send_message',
+            name: chosenSendTool,
             arguments: {
               to: sendMatch[1] ?? '',
               text: (sendMatch[2] ?? '').trim(),

@@ -8,10 +8,16 @@ import type { ToolDefinition } from '@arkzormd/core';
 export function createEchoTool(): ToolDefinition {
   return {
     name: 'echo_note',
-    description: 'Mengembalikan catatan yang diberikan. Contoh tool plugin.',
-    risk: 'L0',
-    allowedRoles: ['owner', 'admin', 'member'],
-    parameters: {
+    category: 'web_utility',
+    description: 'Echo back the provided note. Example plugin tool.',
+    baseLevel: 'L0',
+    scopeRules: [],
+    minRole: 'member',
+    relaxable: false,
+    audit: true,
+    priority: 'P0',
+    implemented: true,
+    params: {
       type: 'object',
       properties: {
         note: { type: 'string', description: 'Teks yang ingin digemakan.' },
@@ -19,10 +25,10 @@ export function createEchoTool(): ToolDefinition {
       required: ['note'],
       additionalProperties: false,
     },
-    async execute(context) {
+    async handler(context) {
       const note = String(context.params.note ?? '').trim();
-      if (!note) return { ok: false, error: 'Catatan kosong.' };
-      return { ok: true, output: { note } };
+      if (!note) return { ok: false, status: 'error', error: 'Catatan kosong.' };
+      return { ok: true, status: 'ok', output: { note } };
     },
   };
 }

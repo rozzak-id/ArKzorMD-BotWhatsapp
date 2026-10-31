@@ -130,6 +130,13 @@ export async function createAppContext(config: AppConfig): Promise<AppContext> {
     permissions,
     approvals,
     audit,
+    botName: config.botNames[0] || 'Arka',
+    services: {
+      messages: stores.messages,
+      memory: stores.memory,
+      settings: stores.settings,
+      audit,
+    },
   });
 
   const humanizer = new Humanizer();
@@ -154,6 +161,7 @@ export async function createAppContext(config: AppConfig): Promise<AppContext> {
     users: stores.users,
     chats: stores.chats,
     messages: stores.messages,
+    memory: stores.memory,
     personas: stores.personas,
     settings: stores.settings,
     permissions,

@@ -14,6 +14,7 @@ export {
   SqlitePersonaStore,
   SqliteSettingsStore,
   SqliteUserStore,
+  SqliteMemoryStore,
   type Stores,
 } from './db/sqlite-stores.js';
 export { DEFAULT_PERSONA, DEFAULT_SETTINGS } from './db/schema.js';
@@ -27,6 +28,18 @@ export {
   type PermissionInput,
   type PermissionOutcome,
 } from './security/permission-engine.js';
+export {
+  resolveEffectiveLevel,
+  decide,
+  isRoleAllowed,
+  allowedRolesForMinRole,
+  normalizeChatTarget,
+  type EffectiveLevelResult,
+  type ResolverContext,
+  type DecideContext,
+  type PermissionDecisionOutcome,
+  type PermissionDecisionResult,
+} from './security/resolver.js';
 export {
   ApprovalEngine,
   extractTarget,

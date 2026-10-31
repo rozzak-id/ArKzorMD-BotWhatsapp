@@ -5,6 +5,7 @@ import type {
   PlatformAdapter,
   Role,
   StoredMessage,
+  ToolDefinition,
 } from '../types.js';
 import type { AuditLog } from '../audit/audit-log.js';
 import type { ApprovalEngine } from '../security/approval-engine.js';
@@ -35,27 +36,39 @@ export interface AgentDependencies {
   approvals: ApprovalEngine;
   audit: AuditLog;
   maxSteps?: number;
+  botName?: string;
+  botNumber?: string;
+  services?: any;
 }
 
-function toAiMessages(input: AgentRunInput): AiMessage[] {
+function toAiMessages(
+  input: AgentRunInput,
+  tools: ToolDefinition[],
+  botName?: string,
+  botNumber?: string,
+): AiMessage[] {
   const history: AiMessage[] = input.history.map((item) => ({
     role: item.role === 'assistant' ? 'assistant' : item.role === 'tool' ? 'tool' : 'user',
     content: item.content,
   }));
 
+  const systemPrompt = buildSystemPrompt({
+    botName,
+    botNumber,
+    persona: input.persona,
+    language: input.persona.language,
+    chatId: input.message.chatId,
+    chatType: input.message.chatType,
+    senderName: input.message.senderName ?? input.message.senderId,
+    senderRole: input.role,
+    tools,
+  });
+
   return [
-    { role: 'system', content: buildSystemPrompt(input.persona) },
+    { role: 'system', content: systemPrompt },
     ...history,
     { role: 'user', content: input.message.text || '[pesan media]' },
   ];
-}
-
-function targetOf(params: Record<string, unknown>): string | null {
-  for (const key of ['to', 'target', 'jid']) {
-    const value = params[key];
-    if (typeof value === 'string' && value.trim()) return value.trim();
-  }
-  return null;
 }
 
 function serialize(value: unknown): string {
@@ -70,7 +83,8 @@ export class AgentOrchestrator {
   }
 
   async run(input: AgentRunInput): Promise<AgentRunResult> {
-    const messages = toAiMessages(input);
+    const availableTools = this.deps.tools.listToolsForRole(input.role);
+    const messages = toAiMessages(input, availableTools, this.deps.botName, this.deps.botNumber);
     const usedTools: string[] = [];
     const pendingApprovals: string[] = [];
 
@@ -98,39 +112,66 @@ export class AgentOrchestrator {
 
       for (const call of completion.toolCalls) {
         const tool = this.deps.tools.get(call.name);
+
         if (!tool) {
-          messages.push({
-            role: 'tool',
-            toolCallId: call.id,
-            name: call.name,
-            content: serialize({ ok: false, error: `Tool ${call.name} tidak dikenal.` }),
-          });
-          continue;
-        }
-
-        const target = targetOf(call.arguments);
-        const decision = this.deps.permissions.evaluate({
-          role: input.role,
-          tool,
-          target,
-        });
-
-        if (decision.outcome === 'deny') {
           this.deps.audit.record({
             actorJid: input.message.senderId,
             action: 'tool.denied',
-            params: { tool: call.name, params: call.arguments, reason: decision.reason },
+            params: {
+              tool: call.name,
+              params: call.arguments,
+              effectiveLevel: 'L0',
+              decision: 'denied',
+              reason: 'Tool tidak dikenal (unknown_tool).',
+            },
           });
           messages.push({
             role: 'tool',
             toolCallId: call.id,
             name: call.name,
-            content: serialize({ ok: false, error: decision.reason }),
+            content: serialize({
+              ok: false,
+              status: 'denied',
+              reason: 'Tool tidak dikenal (unknown_tool).',
+              errorCode: 'unknown_tool',
+              retryable: false,
+            }),
           });
           continue;
         }
 
-        if (decision.outcome === 'approval') {
+        const decision = this.deps.permissions.decide(tool, call.arguments, {
+          currentChatId: input.message.chatId,
+          senderId: input.message.senderId,
+          role: input.role,
+        });
+
+        if (decision.decision === 'denied') {
+          this.deps.audit.record({
+            actorJid: input.message.senderId,
+            action: 'tool.denied',
+            params: {
+              tool: call.name,
+              params: call.arguments,
+              effectiveLevel: decision.effectiveLevel,
+              decision: 'denied',
+              reason: decision.reason,
+            },
+          });
+          messages.push({
+            role: 'tool',
+            toolCallId: call.id,
+            name: call.name,
+            content: serialize({
+              ok: false,
+              status: 'denied',
+              reason: decision.reason,
+            }),
+          });
+          continue;
+        }
+
+        if (decision.decision === 'pending_approval') {
           const request = await this.deps.approvals.create({
             requesterJid: input.message.senderId,
             requesterRole: input.role,
@@ -139,20 +180,35 @@ export class AgentOrchestrator {
             chatId: input.message.chatId,
           });
           pendingApprovals.push(request.shortCode);
+          this.deps.audit.record({
+            actorJid: input.message.senderId,
+            action: 'tool.pending_approval',
+            params: {
+              tool: call.name,
+              params: call.arguments,
+              effectiveLevel: decision.effectiveLevel,
+              decision: 'pending_approval',
+              code: request.shortCode,
+            },
+          });
           messages.push({
             role: 'tool',
             toolCallId: call.id,
             name: call.name,
             content: serialize({
               ok: false,
+              status: 'pending_approval',
               pendingApproval: true,
+              approvalId: request.id,
               code: request.shortCode,
-              note: `Menunggu persetujuan Owner (${request.shortCode}).`,
+              expiresAt: request.expiresAt,
+              note: `Permintaan aksi membutuhkan persetujuan Owner (#${request.shortCode}).`,
             }),
           });
           continue;
         }
 
+        // Allowed
         const result = await executeTool(tool, {
           adapter: this.deps.adapter,
           chatId: input.message.chatId,
@@ -160,19 +216,34 @@ export class AgentOrchestrator {
           role: input.role,
           params: call.arguments,
           message: input.message,
+          services: this.deps.services,
         });
+
         usedTools.push(call.name);
         this.deps.audit.record({
           actorJid: input.message.senderId,
           action: 'tool.executed',
-          params: { tool: call.name, params: call.arguments },
+          params: {
+            tool: call.name,
+            params: call.arguments,
+            effectiveLevel: decision.effectiveLevel,
+            decision: 'allow',
+          },
           result,
         });
+
         messages.push({
           role: 'tool',
           toolCallId: call.id,
           name: call.name,
-          content: serialize(result),
+          content: serialize({
+            ok: result.ok,
+            status: result.status ?? (result.ok ? 'ok' : 'error'),
+            output: result.output,
+            error: result.error,
+            errorCode: result.errorCode,
+            retryable: result.retryable,
+          }),
         });
       }
     }

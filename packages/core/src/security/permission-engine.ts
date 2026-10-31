@@ -1,4 +1,12 @@
-import type { Role, ToolSchema } from '../types.js';
+import type { Role, ToolDefinition, ToolSchema } from '../types.js';
+import {
+  decide,
+  type DecideContext,
+  type PermissionDecisionOutcome,
+  type PermissionDecisionResult,
+} from './resolver.js';
+
+export * from './resolver.js';
 
 export type PermissionOutcome = 'allow' | 'approval' | 'deny';
 
@@ -19,6 +27,8 @@ export interface PermissionEngineOptions {
   isKillSwitchOn: () => boolean;
   /** Aturan "setuju selalu" yang tersimpan. */
   hasRule?: (toolName: string, target: string | null) => boolean;
+  /** Pengecekan konfirmasi Owner dinonaktifkan untuk tool relaxable */
+  isOwnerConfirmationDisabled?: (toolName: string) => boolean;
 }
 
 /**
@@ -27,6 +37,19 @@ export interface PermissionEngineOptions {
  */
 export class PermissionEngine {
   constructor(private readonly options: PermissionEngineOptions) {}
+
+  decide(
+    tool: ToolDefinition | undefined,
+    params: Record<string, unknown>,
+    context: Omit<DecideContext, 'isKillSwitchOn' | 'hasRule'>,
+  ): PermissionDecisionResult {
+    return decide(tool, params, {
+      ...context,
+      isKillSwitchOn: this.options.isKillSwitchOn,
+      hasRule: this.options.hasRule,
+      isOwnerConfirmationDisabled: this.options.isOwnerConfirmationDisabled,
+    });
+  }
 
   evaluate(input: PermissionInput): PermissionDecision {
     const { role, tool } = input;
