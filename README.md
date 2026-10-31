@@ -27,6 +27,7 @@ memerlukan Linux x64/arm64 (Docker/WSL) karena paket E2EE native
 - [Menjalankan dengan Docker](#menjalankan-dengan-docker)
 - [Struktur repo](#struktur-repo)
 - [Dokumentasi](#dokumentasi)
+- [Katalog Tool](#katalog-tool)
 - [Scripts](#scripts)
 - [Konfigurasi](#konfigurasi)
 - [Menguji pipeline tanpa WhatsApp](#menguji-pipeline-tanpa-whatsapp)
@@ -221,6 +222,42 @@ Dokumentasi lengkap ArKzorMD tersimpan di folder [`docs/`](docs/):
 - [Panduan Command, Tool, dan Plugin](docs/plugins.md) — Panduan menulis command, tool, platform adapter, serta template plugin workspace.
 - [Prompt Agent dan Katalog Tool](docs/agent-prompt-and-tools.md) — System prompt siap pakai, aturan level risiko dinamis, katalog lengkap tool, dan kontrak hasil eksekusi.
 
+## Katalog Tool
+
+ArKzorMD mendefinisikan katalog 86 tool (Kategori A–J, sesuai `docs/agent-prompt-and-tools.md`). Tool tingkat L2 tidak pernah didaftarkan ke AI.
+
+### Tool Aktif (Implemented = true)
+
+| Tool | Kategori | Level Efektif | Role Min | Keterangan |
+| --- | --- | --- | --- | --- |
+| `wa.reply` | Pesan & Media | L0 | Member | Balas pesan di chat aktif dengan teks |
+| `wa.send_text` | Pesan & Media | L0 chat ini, L1 chat lain | Member | Kirim pesan teks (maks 4096 karakter) |
+| `wa.send_media` | Pesan & Media | L0 chat ini, L1 chat lain | Member | Kirim media (gambar, audio, video, dokumen, stiker, gif) |
+| `wa.react` | Pesan & Media | L0 | Member | Beri reaksi emoji pada pesan di chat aktif |
+| `wa.read_chat` | Baca & Konteks | L0 chat ini, L1 chat lain (Owner) | Member | Baca riwayat percakapan chat aktif |
+| `memory.save_note` | Memori | L0 | Member | Simpan catatan/fakta tentang pengguna atau percakapan |
+| `memory.search` | Memori | L0 | Member | Cari catatan memori berdasarkan kata kunci |
+| `memory.forget` | Memori | L0 | Member | Hapus catatan memori (spesifik atau bersihkan semua) |
+| `util.now` | Web & Utilitas | L0 | Member | Waktu, tanggal, dan zona waktu saat ini |
+| `util.calculate` | Web & Utilitas | L0 | Member | Perhitungan matematika aman (tanpa `eval`, bebas injeksi) |
+| `util.convert` | Web & Utilitas | L0 | Member | Konversi unit (panjang, massa, suhu, waktu, data) |
+| `web.fetch` | Web & Utilitas | L0 | Member | Ambil teks web dengan perlindungan SSRF bertingkat |
+| `bot.status` | Kontrol Bot | L0 | Member | Status uptime, platform, dan kesehatan bot |
+| `bot.panic` | Kontrol Bot | L0 | Owner | Kill switch darurat: instan blokir semua aksi L1 |
+
+### Tool Dalam Antrean (Implemented = false, M3–M6)
+
+- **Kategori A (Pesan & Media):** `wa.send_location`, `wa.send_contact`, `wa.send_poll`, `wa.edit_message`, `wa.delete_message`, `wa.forward`, `wa.pin_message`, `wa.mention_all`, `wa.schedule_message`, `wa.set_presence`, `wa.mark_read`.
+- **Kategori B (Baca & Konteks):** `wa.search_messages`, `wa.download_media`, `wa.list_chats`, `wa.list_contacts`, `wa.list_groups`, `wa.get_group_info`, `wa.get_contact_info`, `wa.check_number`, `wa.get_profile_picture`, `wa.view_status`.
+- **Kategori C (Grup & Komunitas):** `wa.group_create`, `wa.group_set_subject`, `wa.group_set_description`, `wa.group_set_picture`, `wa.group_add`, `wa.group_remove`, `wa.group_promote`, `wa.group_demote`, `wa.group_settings`, `wa.group_invite_link`, `wa.group_join`, `wa.group_leave`, `wa.group_join_requests`, `wa.group_ephemeral`, `wa.community_manage`.
+- **Kategori D (Manajemen Chat):** `wa.chat_modify`, `wa.chat_clear`, `wa.chat_delete`, `wa.set_disappearing`, `wa.block_contact`.
+- **Kategori E (Profil & Privasi):** `wa.set_profile_name`, `wa.set_about`, `wa.set_profile_picture`, `wa.remove_profile_picture`, `wa.post_status`, `wa.delete_status`, `wa.update_privacy`, `wa.set_default_disappearing`.
+- **Kategori F (Channel & Broadcast):** `wa.channel_manage`, `wa.channel_send`, `wa.broadcast`.
+- **Kategori G (Media AI):** `ai.analyze_image`, `ai.ocr`, `ai.transcribe_audio`, `ai.summarize_document`, `ai.translate`, `ai.tts`, `ai.generate_image`, `ai.make_sticker`, `ai.describe_video`, `ai.create_file`.
+- **Kategori H (Utilitas Lanjutan):** `web.search`, `util.reminder`.
+- **Kategori I (Memori Lanjutan):** `memory.view_user`.
+- **Kategori J (Kontrol Bot Lanjutan):** `bot.list_users`, `bot.set_persona`, `bot.set_chat_mode`, `bot.user_block`, `bot.user_quota`, `bot.user_set_role`, `bot.list_approvals`.
+
 ## Scripts
 
 | Perintah | Fungsi |
@@ -325,7 +362,7 @@ Laporkan kerentanan sesuai [SECURITY.md](SECURITY.md).
 | --- | --- | --- |
 | M0 Fondasi | 🚧 | Repo, core, adapter onigis, SQLite, role; live perlu verifikasi di Linux/Docker |
 | M1 AI Agent | ✅ | Provider OpenAI-compatible/Gemini, persona, memori 20 pesan, tool calling, fallback model; ringkasan otomatis menyusul |
-| M2 Izin & approval | 🚧 | Engine + tombol/command WhatsApp selesai; rehidrasi antrean dan UI keputusan |
+| M2 Izin & approval | ✅ | Engine, level resolver dinamis (Bagian 3), katalog 86 tool, 14 tool P0 aktif, proteksi SSRF, invariant eksekusi L1, audit tool |
 | M3 Web UI | 🚧 | Shell selesai; auth, wizard, editor, aksi pengguna |
 | M4 Media | ⏳ | Analisis gambar, transkripsi voice note |
 | M5 Hardening | ⏳ | Uji keamanan, dokumentasi, rilis v0.1 |

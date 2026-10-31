@@ -34,30 +34,41 @@ Aturan:
 
 ## 2. Tool baru
 
-Tool adalah aksi yang bisa dipilih AI. Metadata risiko dan role adalah bagian dari
-keamanan, bukan dokumentasi.
+Tool adalah aksi yang bisa dipilih AI. Metadata risiko, role, dan scope rules adalah bagian dari
+keamanan yang ditegakkan oleh kode, bukan dokumentasi belaka.
+
+Format entri `ToolDefinition` (sesuai Bagian 5 `docs/agent-prompt-and-tools.md`):
 
 ```ts
 import type { ToolDefinition } from '@arkzormd/core';
 
 export const remindTool: ToolDefinition = {
-  name: 'remind_me',
-  description: 'Menyimpan pengingat sederhana untuk pengguna.',
-  risk: 'L0',
-  allowedRoles: ['owner', 'admin', 'member'],
-  parameters: {
+  name: 'util.reminder',
+  category: 'web_utility',
+  description: 'Set a reminder for oneself (L0) or for someone else (L1).',
+  baseLevel: 'L0',
+  scopeRules: [{ when: 'target orang lain', level: 'L1' }],
+  minRole: 'member',
+  rateLimit: { perMinute: 20, perChatPerMinute: 6 },
+  relaxable: false,
+  audit: true,
+  priority: 'P1',
+  implemented: true,
+  params: {
     type: 'object',
     properties: {
-      text: { type: 'string', description: 'Isi pengingat.' },
+      text: { type: 'string', description: 'Reminder message' },
+      when: { type: 'string', description: 'Due time in natural text or ISO' },
+      target: { type: 'string', description: 'Target contact or chat (optional)' },
     },
-    required: ['text'],
+    required: ['text', 'when'],
     additionalProperties: false,
   },
-  async execute(context) {
+  async handler(context) {
     const text = String(context.params.text ?? '').trim();
-    if (!text) return { ok: false, error: 'Teks pengingat kosong.' };
+    if (!text) return { ok: false, status: 'error', error: 'Teks pengingat kosong.' };
     // simpan lewat service yang disuntikkan, jangan akses DB global
-    return { ok: true, output: { text } };
+    return { ok: true, status: 'ok', output: { text } };
   },
 };
 ```
@@ -68,23 +79,32 @@ Daftarkan:
 tools.register(remindTool);
 ```
 
-### Memilih level risiko
+### Memilih level risiko & Scope Rules
 
 | Level | Kapan dipakai | Perilaku |
 | --- | --- | --- |
-| `L0` | Hanya menyentuh chat berjalan: balas, react, kirim media ke chat yang sama | Langsung jalan |
-| `L1` | Menyentuh pihak lain atau mengubah keadaan akun: kirim ke kontak lain, kick, gabung grup, ubah profil | Approval Owner |
-| `L2` | Konfigurasi, secret, logout, operasi sistem | Selalu ditolak dari AI |
+| `L0` | Hanya menyentuh chat berjalan: balas, react, kirim media ke chat yang sama, utilitas lokal | Langsung jalan |
+| `L1` | Menyentuh pihak lain atau mengubah keadaan akun: kirim ke kontak lain, kick, gabung grup, ubah profil, penerima >20 | Approval Owner |
+| `L2` | Konfigurasi, secret, logout, operasi sistem, matikan kill switch | Selalu ditolak dari AI (hanya Web UI) |
 
-Aturan tambahan:
+Aturan penentu level efektif (`resolveEffectiveLevel`):
 
-- Tool L1 **wajib** punya `allowedRoles` tanpa `member` kecuali ada desain baru yang
-  disetujui.
+1. **Aksi chat berjalan:** `wa.reply`, `wa.react`, `wa.send_text` (tanpa `to`), edit pesan bot sendiri $\rightarrow$ `L0`.
+2. **Aksi ke chat/kontak/grup lain:** `to` atau `target` berbeda dari chat berjalan $\rightarrow$ `L1`.
+3. **Aksi pada akun bot:** ubah profil, nama, status, privasi, manajemen chat $\rightarrow$ `L1`.
+4. **Aksi menimpa milik orang lain:** hapus pesan orang lain, kick, promote, demote $\rightarrow$ `L1`.
+5. **Membaca chat lain, daftar chat, kontak:** $\rightarrow$ `L1`, khusus Owner (non-owner ditolak).
+6. **Penerima banyak:** jumlah penerima $> 20$ (default, bisa diatur) $\rightarrow$ `L1`.
+7. **L2 Terkunci:** konfigurasi, secret, kode, sesi $\rightarrow$ `L2`.
+
+Aturan implementasi penting:
+
+- Handler L1 **hanya boleh dieksekusi lewat callback `ApprovalEngine`** (`isApprovalExecution: true`). Eksekusi langsung di luar approval akan diblokir oleh `executeTool`.
 - Validasi semua parameter di handler: tipe, panjang, normalisasi tujuan, batas penerima.
-- Jangan mengembalikan secret di `output`; audit akan meredaksi kunci sensitif, tetapi
-  jangan mengandalkan itu.
+- Sertakan `additionalProperties: false` pada skema `params`.
+- Tulis `description` dalam bahasa Inggris agar model AI memilih tool dengan akurat.
+- Jangan mengembalikan secret di `output`; audit akan meredaksi kunci sensitif, tetapi jangan mengandalkan itu.
 - Tool tidak boleh memanggil tool lain secara langsung; ajukan sebagai tool call terpisah.
-- Sertakan `additionalProperties: false` pada skema parameter.
 
 ## 3. Plugin
 
