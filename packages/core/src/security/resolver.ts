@@ -191,24 +191,40 @@ export function resolveEffectiveLevel(
   }
 
   // 6. Aksi ke chat, kontak, atau grup lain
-  const target = extractPrimaryTarget(params);
-  const currentChatNormalized = normalizeChatTarget(context.currentChatId);
-  if (target && target !== currentChatNormalized) {
-    return {
-      level: 'L1',
-      reason: 'Aksi ke chat, kontak, atau grup lain memerlukan persetujuan Owner (L1).',
-    };
+  const hasChatTarget =
+    tool.category === 'message_media' ||
+    tool.category === 'channel_broadcast' ||
+    tool.category === 'group_community' ||
+    tool.name.startsWith('wa.send_') ||
+    tool.name === 'send_message' ||
+    tool.name === 'wa.forward' ||
+    tool.name === 'util.reminder';
+
+  if (hasChatTarget) {
+    const target = extractPrimaryTarget(params);
+    const currentChatNormalized = normalizeChatTarget(context.currentChatId);
+    if (target && target !== currentChatNormalized) {
+      return {
+        level: 'L1',
+        reason: 'Aksi ke chat, kontak, atau grup lain memerlukan persetujuan Owner (L1).',
+      };
+    }
   }
 
   // 7. Aksi pada chat yang sedang berlangsung (balas, react, kirim teks/media tanpa to)
+  const target = extractPrimaryTarget(params);
+  const currentChatNormalized = normalizeChatTarget(context.currentChatId);
+  const isTargetingCurrentOrEmpty = !target || target === currentChatNormalized;
+
   if (
-    tool.name === 'wa.reply' ||
-    tool.name === 'wa.react' ||
-    tool.name === 'wa.edit_message' ||
-    tool.category === 'memory' ||
-    tool.category === 'web_utility' ||
-    tool.name === 'bot.status' ||
-    tool.name === 'bot.panic'
+    isTargetingCurrentOrEmpty &&
+    (tool.name === 'wa.reply' ||
+      tool.name === 'wa.react' ||
+      tool.name === 'wa.edit_message' ||
+      tool.category === 'memory' ||
+      (tool.category === 'web_utility' && !tool.name.startsWith('wa.')) ||
+      tool.name === 'bot.status' ||
+      tool.name === 'bot.panic')
   ) {
     return {
       level: 'L0',
