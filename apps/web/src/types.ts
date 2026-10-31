@@ -7,7 +7,12 @@ export interface StatusResponse {
   version: string;
   nodeEnv: string;
   uptimeSec: number;
-  ai: { provider: string; model: string };
+  ai: {
+    provider: string;
+    model: string;
+    fallbackModel: string | null;
+    timeoutMs: number;
+  };
   connection: {
     platform: 'whatsapp';
     mode: string;
@@ -123,5 +128,7 @@ export interface SettingsResponse {
   rateLimitPerMinute: number;
   aiProvider: string;
   aiModel: string;
+  aiFallbackModel: string | null;
+  aiTimeoutMs: number;
   whatsappMode: string;
 }

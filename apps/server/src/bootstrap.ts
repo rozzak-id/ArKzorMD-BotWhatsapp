@@ -5,10 +5,12 @@ import {
   AuditLog,
   Bot,
   CommandRegistry,
+  GeminiProvider,
   Humanizer,
   MessageRouter,
   MockAdapter,
   MockProvider,
+  OpenAiProvider,
   PermissionEngine,
   RateLimiter,
   ToolRegistry,
@@ -26,12 +28,31 @@ import { createEchoTool } from '@arkzormd/plugin-example-tool';
 import type { AppConfig } from './config.js';
 import type { AppContext } from './context.js';
 
-function createProvider(config: AppConfig): AiProvider {
+function createProvider(
+  config: AppConfig,
+  logger: AppContext['logger'],
+): AiProvider {
   if (config.aiProvider === 'mock') return new MockProvider();
-  throw new Error(
-    `AI_PROVIDER=${config.aiProvider} belum diimplementasikan pada M0. ` +
-      'Gunakan AI_PROVIDER=mock sampai provider asli masuk di M1.',
-  );
+
+  if (config.aiProvider === 'openai') {
+    return new OpenAiProvider({
+      apiKey: config.openaiApiKey,
+      baseUrl: config.openaiBaseUrl,
+      model: config.aiModel,
+      fallbackModel: config.aiFallbackModel,
+      timeoutMs: config.aiTimeoutMs,
+      logger,
+    });
+  }
+
+  return new GeminiProvider({
+    apiKey: config.geminiApiKey,
+    baseUrl: config.geminiBaseUrl,
+    model: config.aiModel,
+    fallbackModel: config.aiFallbackModel,
+    timeoutMs: config.aiTimeoutMs,
+    logger,
+  });
 }
 
 function createAdapter(
@@ -101,7 +122,7 @@ export async function createAppContext(config: AppConfig): Promise<AppContext> {
   commands.registerAll(createPluginCommands());
 
   const router = new MessageRouter(config.prefix, commands);
-  const provider = createProvider(config);
+  const provider = createProvider(config, logger);
   const agent = new AgentOrchestrator({
     provider,
     adapter,

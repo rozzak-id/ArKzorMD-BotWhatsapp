@@ -18,6 +18,7 @@ import type { PermissionEngine } from './security/permission-engine.js';
 import type { CommandRegistry, CommandServices } from './router/command-registry.js';
 import type { MessageRouter } from './router/router.js';
 import type { AgentOrchestrator } from './agent/agent.js';
+import { AiProviderError } from './agent/provider.js';
 import type { Humanizer } from './humanizer/humanizer.js';
 import type { RateLimiter } from './rate-limit/rate-limiter.js';
 import type { ToolRegistry } from './tools/registry.js';
@@ -110,6 +111,31 @@ export class Bot {
         params: { chatId: message.chatId },
         result: { error: error instanceof Error ? error.message : String(error) },
       });
+
+      const user = this.deps.users.get(message.senderId);
+      if (
+        error instanceof AiProviderError &&
+        user?.status === 'active' &&
+        !message.fromBot
+      ) {
+        try {
+          await this.reply(
+            message.chatId,
+            {
+              text:
+                '⚠️ Maaf, layanan AI sedang bermasalah. ' +
+                'Coba lagi beberapa saat lagi ya.',
+            },
+            [],
+            message.id,
+          );
+        } catch (replyError) {
+          this.deps.logger.error(
+            { err: replyError, chatId: message.chatId },
+            'Gagal mengirim pesan error AI',
+          );
+        }
+      }
     }
   }
 

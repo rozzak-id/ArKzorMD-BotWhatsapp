@@ -138,6 +138,8 @@ export function registerApiRoutes(app: FastifyInstance, context: AppContext): vo
     rateLimitPerMinute: context.stores.settings.getNumber('rate_limit_per_minute', 12),
     aiProvider: context.config.aiProvider,
     aiModel: context.config.aiModel,
+    aiFallbackModel: context.config.aiFallbackModel,
+    aiTimeoutMs: context.config.aiTimeoutMs,
     whatsappMode: context.config.whatsappMode,
   }));
 

@@ -55,12 +55,22 @@ export { createBuiltinTools, normalizeTarget } from './tools/builtin.js';
 export { AgentOrchestrator, type AgentDependencies, type AgentRunInput, type AgentRunResult } from './agent/agent.js';
 export {
   MockProvider,
+  AiProviderError,
   type AiCompletion,
   type AiCompletionRequest,
   type AiMessage,
   type AiProvider,
+  type AiProviderErrorOptions,
   type AiToolCall,
 } from './agent/provider.js';
+export {
+  BaseAiProvider,
+  type BaseProviderOptions,
+  type FetchLike,
+  type ProviderLogger,
+} from './agent/base-provider.js';
+export { OpenAiProvider, type OpenAiProviderOptions } from './agent/openai-provider.js';
+export { GeminiProvider, type GeminiProviderOptions } from './agent/gemini-provider.js';
 
 export { buildSystemPrompt } from './persona/prompt.js';
 

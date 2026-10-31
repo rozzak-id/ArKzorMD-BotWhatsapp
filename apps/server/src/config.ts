@@ -35,9 +35,16 @@ const EnvSchema = z.object({
   WHATSAPP_MODULE: z.string().default('onigis'),
 
   AI_PROVIDER: z.enum(['mock', 'openai', 'gemini']).default('mock'),
-  AI_MODEL: z.string().default('gpt-4o-mini'),
+  AI_MODEL: z.string().optional(),
+  AI_FALLBACK_MODEL: z.string().optional(),
+  AI_TIMEOUT_MS: z.coerce.number().int().min(1_000).max(300_000).default(60_000),
   OPENAI_API_KEY: z.string().optional(),
   OPENAI_BASE_URL: z.string().url().default('https://api.openai.com/v1'),
+  GEMINI_API_KEY: z.string().optional(),
+  GEMINI_BASE_URL: z
+    .string()
+    .url()
+    .default('https://generativelanguage.googleapis.com/v1beta'),
 });
 
 export interface AppConfig {
@@ -59,8 +66,12 @@ export interface AppConfig {
   whatsappModule: string;
   aiProvider: 'mock' | 'openai' | 'gemini';
   aiModel: string;
+  aiFallbackModel: string | null;
+  aiTimeoutMs: number;
   openaiApiKey: string | null;
   openaiBaseUrl: string;
+  geminiApiKey: string | null;
+  geminiBaseUrl: string;
 }
 
 function parseEnv(env: NodeJS.ProcessEnv) {
@@ -74,13 +85,66 @@ function parseEnv(env: NodeJS.ProcessEnv) {
   return parsed.data;
 }
 
+function defaultModel(provider: 'mock' | 'openai' | 'gemini'): string {
+  if (provider === 'gemini') return 'gemini-2.5-flash';
+  if (provider === 'openai') return 'gpt-4o-mini';
+  return 'mock';
+}
+
+function isLocalEndpoint(url: string): boolean {
+  try {
+    const host = new URL(url).hostname.toLowerCase();
+    return (
+      host === 'localhost' ||
+      host === '127.0.0.1' ||
+      host === '::1' ||
+      host.endsWith('.local')
+    );
+  } catch {
+    return false;
+  }
+}
+
+function validateApiKey(
+  provider: 'openai' | 'gemini',
+  key: string | null,
+): void {
+  if (!key) {
+    throw new Error(
+      provider === 'openai'
+        ? 'OPENAI_API_KEY wajib diisi untuk AI_PROVIDER=openai (kecuali endpoint lokal seperti Ollama).'
+        : 'GEMINI_API_KEY wajib diisi untuk AI_PROVIDER=gemini.',
+    );
+  }
+  if (key.length < 8) {
+    throw new Error(
+      `${provider === 'openai' ? 'OPENAI_API_KEY' : 'GEMINI_API_KEY'} terlalu pendek; periksa kembali nilainya.`,
+    );
+  }
+}
+
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
   const parsed = parseEnv(env);
   const dataDir = resolve(PROJECT_ROOT, parsed.DATA_DIR);
   const adminToken = parsed.ADMIN_TOKEN?.trim() || null;
+  const aiProvider = parsed.AI_PROVIDER;
+  const aiModel = parsed.AI_MODEL?.trim() || defaultModel(aiProvider);
+  const fallbackModel = parsed.AI_FALLBACK_MODEL?.trim() || null;
+  const openaiApiKey = parsed.OPENAI_API_KEY?.trim() || null;
+  const geminiApiKey = parsed.GEMINI_API_KEY?.trim() || null;
 
   if (adminToken && adminToken.length < 16) {
     throw new Error('ADMIN_TOKEN minimal 16 karakter. Gunakan nilai acak yang kuat.');
+  }
+
+  if (aiProvider === 'gemini') {
+    validateApiKey('gemini', geminiApiKey);
+  }
+
+  if (aiProvider === 'openai' && !isLocalEndpoint(parsed.OPENAI_BASE_URL)) {
+    validateApiKey('openai', openaiApiKey);
+  } else if (aiProvider === 'openai' && openaiApiKey) {
+    validateApiKey('openai', openaiApiKey);
   }
 
   return {
@@ -106,9 +170,14 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     whatsappMode: parsed.WHATSAPP_MODE,
     whatsappAutoconnect: parsed.WHATSAPP_AUTOCONNECT,
     whatsappModule: parsed.WHATSAPP_MODULE,
-    aiProvider: parsed.AI_PROVIDER,
-    aiModel: parsed.AI_MODEL,
-    openaiApiKey: parsed.OPENAI_API_KEY?.trim() || null,
+    aiProvider,
+    aiModel,
+    aiFallbackModel:
+      fallbackModel && fallbackModel !== aiModel ? fallbackModel : null,
+    aiTimeoutMs: parsed.AI_TIMEOUT_MS,
+    openaiApiKey,
     openaiBaseUrl: parsed.OPENAI_BASE_URL,
+    geminiApiKey,
+    geminiBaseUrl: parsed.GEMINI_BASE_URL,
   };
 }

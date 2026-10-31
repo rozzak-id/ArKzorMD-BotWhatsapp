@@ -45,8 +45,12 @@ ArKzorMD mengendalikan akun WhatsApp nyata. Aset yang dilindungi:
   folder `data/whatsapp-auth`; keduanya bisa dipakai untuk mengakses akun.
 - **Executor approval belum rehidrasi setelah restart.** Request tetap tersimpan, tetapi
   eksekusi otomatis setelah restart belum diimplementasikan (M2).
-- **Provider AI asli belum ada.** Hanya `MockProvider`; jangan menganggap jawaban mock
-  sebagai perilaku produksi.
+- **API key masih dibaca dari `.env`.** Provider OpenAI-compatible dan Gemini sudah
+  aktif, tetapi penyimpanan terenkripsi lewat Web UI baru masuk M3. Lindungi file `.env`,
+  batasi akses ke mesin, dan jangan membagikannya.
+- **Isi percakapan dikirim ke penyedia AI yang dipilih.** Gunakan model lokal (misalnya
+  Ollama) bila privasi percakapan menjadi prioritas. Kebijakan retensi dan pemrosesan
+  data mengikuti penyedia masing-masing.
 - **Prompt injection** dimitigasi dengan memisahkan data dan instruksi serta menegakkan
   izin di kode, tetapi tidak ada jaminan model tidak akan mencoba melewatinya. Keputusan
   akhir tetap di `PermissionEngine`.

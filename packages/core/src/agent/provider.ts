@@ -12,6 +12,12 @@ export interface AiToolCall {
   id: string;
   name: string;
   arguments: Record<string, unknown>;
+  /**
+   * Metadata mentah khusus provider, misalnya thoughtSignature Gemini.
+   * Tidak pernah ditampilkan ke pengguna dan hanya dipakai saat mengirim
+   * kembali riwayat tool call ke provider yang sama.
+   */
+  providerData?: unknown;
 }
 
 export interface AiCompletion {
@@ -26,10 +32,41 @@ export interface AiCompletionRequest {
   maxTokens?: number;
 }
 
-/** Provider abstrak (FR-06). Implementasi nyata menyusul di M1. */
+/** Provider abstrak (FR-06). */
 export interface AiProvider {
   id: string;
   complete(request: AiCompletionRequest): Promise<AiCompletion>;
+}
+
+export interface AiProviderErrorOptions {
+  provider: string;
+  model?: string | null;
+  status?: number | null;
+  retryable?: boolean;
+  cause?: unknown;
+}
+
+/**
+ * Error provider AI yang aman ditampilkan ke log.
+ * Pesan tidak boleh memuat API key atau body permintaan mentah.
+ */
+export class AiProviderError extends Error {
+  readonly provider: string;
+  readonly model: string | null;
+  readonly status: number | null;
+  readonly retryable: boolean;
+
+  constructor(message: string, options: AiProviderErrorOptions) {
+    super(
+      message,
+      options.cause === undefined ? undefined : { cause: options.cause },
+    );
+    this.name = 'AiProviderError';
+    this.provider = options.provider;
+    this.model = options.model ?? null;
+    this.status = options.status ?? null;
+    this.retryable = options.retryable ?? false;
+  }
 }
 
 /**
@@ -78,7 +115,7 @@ export class MockProvider implements AiProvider {
     }
 
     return {
-      text: `Aku dengar: "${lastUser}". (mock provider — provider AI asli menyusul di M1)`,
+      text: `Aku dengar: "${lastUser}". (mock provider)`,
       toolCalls: [],
     };
   }

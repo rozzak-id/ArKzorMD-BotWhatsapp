@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { AgentOrchestrator } from './agent/agent.js';
-import { MockProvider } from './agent/provider.js';
+import { AiProviderError, MockProvider, type AiProvider } from './agent/provider.js';
 import { AuditLog } from './audit/audit-log.js';
 import { Bot } from './bot.js';
 import { openDatabase } from './db/index.js';
@@ -22,7 +22,7 @@ const OWNER = '6281111111111@s.whatsapp.net';
 const ADMIN = '6282222222222@s.whatsapp.net';
 const MEMBER = '6283333333333@s.whatsapp.net';
 
-function createHarness() {
+function createHarness(provider: AiProvider = new MockProvider()) {
   const db = openDatabase(':memory:');
   const stores = createStores(db);
   const logger = createLogger({ level: 'silent' });
@@ -47,7 +47,7 @@ function createHarness() {
   commands.registerAll(createDefaultCommands());
 
   const agent = new AgentOrchestrator({
-    provider: new MockProvider(),
+    provider,
     adapter,
     tools,
     permissions,
@@ -86,7 +86,7 @@ function createHarness() {
     rateLimiter: new RateLimiter({ perChatPerMinute: 100, globalPerMinute: 1000 }),
     audit,
     logger,
-    aiProviderId: 'mock',
+    aiProviderId: provider.id,
   });
 
   return { db, stores, adapter, audit, approvals, bot };
@@ -301,5 +301,35 @@ describe('Bot pipeline (mock end-to-end)', () => {
 
     await harness.adapter.receive(message({ senderId: OWNER, text: '.stop' }));
     expect(harness.stores.settings.getBoolean('kill_switch')).toBe(true);
+  });
+
+  it('mengirim pesan ramah bila provider AI gagal total', async () => {
+    const failingProvider: AiProvider = {
+      id: 'openai',
+      async complete() {
+        throw new AiProviderError('OpenAI mengembalikan HTTP 500.', {
+          provider: 'openai',
+          model: 'gpt-test',
+          status: 500,
+          retryable: true,
+        });
+      },
+    };
+    const harness = createHarness(failingProvider);
+    cleanup = () => {
+      harness.bot.stop();
+      harness.db.close();
+    };
+    await harness.adapter.connect();
+    harness.bot.start();
+
+    await harness.adapter.receive(message({ text: 'halo' }));
+
+    expect(harness.adapter.sent).toHaveLength(1);
+    expect(harness.adapter.sent[0]?.content.text).toContain(
+      'layanan AI sedang bermasalah',
+    );
+    const actions = harness.audit.list(50).map((entry) => entry.action);
+    expect(actions).toContain('message.processing_failed');
   });
 });

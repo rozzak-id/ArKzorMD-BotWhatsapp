@@ -8,7 +8,12 @@ export interface StatusResponse {
   version: string;
   nodeEnv: string;
   uptimeSec: number;
-  ai: { provider: string; model: string };
+  ai: {
+    provider: string;
+    model: string;
+    fallbackModel: string | null;
+    timeoutMs: number;
+  };
   connection: {
     platform: 'whatsapp';
     mode: string;
@@ -47,7 +52,12 @@ export function buildStatus(context: AppContext): StatusResponse {
     version: APP_VERSION,
     nodeEnv: context.config.nodeEnv,
     uptimeSec: Math.floor((Date.now() - context.startedAt) / 1000),
-    ai: { provider: context.aiProviderId, model: context.config.aiModel },
+    ai: {
+      provider: context.aiProviderId,
+      model: context.config.aiModel,
+      fallbackModel: context.config.aiFallbackModel,
+      timeoutMs: context.config.aiTimeoutMs,
+    },
     connection: {
       platform: 'whatsapp',
       mode: context.config.whatsappMode,

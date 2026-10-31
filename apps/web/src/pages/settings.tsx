@@ -41,7 +41,16 @@ export function SettingsPage() {
               <dt>AI provider</dt>
               <dd>
                 {data.aiProvider} · <code>{data.aiModel}</code>
+                {data.aiFallbackModel && (
+                  <>
+                    {' '}· fallback <code>{data.aiFallbackModel}</code>
+                  </>
+                )}
               </dd>
+            </div>
+            <div>
+              <dt>Timeout AI</dt>
+              <dd>{Math.round(data.aiTimeoutMs / 1000)} detik</dd>
             </div>
             <div>
               <dt>Mode WhatsApp</dt>
@@ -62,8 +71,9 @@ export function SettingsPage() {
       <Card title="Catatan">
         <ul class="checklist">
           <li>
-            Secret seperti API key tidak pernah dikirim ke Web UI maupun log; penyimpanan
-            terenkripsi masuk bersama pengaturan AI di M1/M3.
+            Secret seperti API key tidak pernah dikirim ke Web UI maupun log. Penyimpanan
+            API key terenkripsi lewat Web UI masuk M3; saat ini key dibaca dari{' '}
+            <code>.env</code>.
           </li>
           <li>
             Saat ini environment <code>.env</code> menjadi sumber konfigurasi awal. Editor

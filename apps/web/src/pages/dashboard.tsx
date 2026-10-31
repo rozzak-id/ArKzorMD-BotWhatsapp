@@ -38,6 +38,9 @@ export function DashboardPage({ status }: { status: StatusResponse | null }) {
         <Card title="AI Provider">
           <p class="metric">{status?.ai.provider ?? '—'}</p>
           <p class="muted">Model: {status?.ai.model ?? '—'}</p>
+          {status?.ai.fallbackModel && (
+            <p class="muted">Fallback: {status.ai.fallbackModel}</p>
+          )}
         </Card>
         <Card title="Approval menunggu">
           <p class="metric">{status?.counts.pendingApprovals ?? 0}</p>
