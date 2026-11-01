@@ -1,6 +1,6 @@
 <div align="center">
 
-# ⚡ ArKzorMD
+# <img src="./assets/icons/zap.svg" width="32" height="32" valign="middle" alt="ArKzorMD" /> ArKzorMD
 ### *Next-Gen Self-Hosted Hybrid AI WhatsApp Bot Platform*
 
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue.svg?style=for-the-badge&logo=typescript)](https://www.typescriptlang.org/)
@@ -18,7 +18,7 @@
 [Instalasi Cepat](#-instalasi-cepat) •
 [Web Dashboard](#-web-dashboard--wizard) •
 [AI & Multimodal](#-kemampuan-ai--multimodal) •
-[Katalog Command](#-katalog-command-52-modul) •
+[Katalog Perintah](#-katalog-perintah-52-modul) •
 [Keamanan](#-keamanan--approval-engine) •
 [Roadmap](#-roadmap-proyek)
 
@@ -26,47 +26,47 @@
 
 </div>
 
-## 💡 Mengapa ArKzorMD?
+## <img src="./assets/icons/info.svg" width="20" height="20" valign="middle" /> Mengapa ArKzorMD?
 
 Kebanyakan bot WhatsApp saat ini terbelah menjadi dua ekstrem:
-1. **Bot Command Kuno**: Cepat tapi kaku, hanya merespons prefix (`.menu`, `.kick`) tanpa pemahaman bahasa alami.
-2. **Bot AI Polos**: Pintar diajak ngobrol tapi lambat, boros token API, dan berbahaya jika diberi izin eksekusi aksi WhatsApp tanpa pengawasan.
+1. **Bot Command Konvensional**: Cepat tetapi kaku, hanya merespons prefix (`.menu`, `.kick`) tanpa pemahaman bahasa alami.
+2. **Bot AI Mandiri**: Luwes diajak berkomunikasi tetapi lambat, boros kuota token API, dan rentan menimbulkan masalah jika diberikan wewenang eksekusi tanpa kontrol.
 
 **ArKzorMD menggabungkan keunggulan keduanya dalam Arsitektur Dual-Flow Hybrid:**
-* ⚡ **Eksekusi Kilat**: Perintah ber-prefix (`.menu`, `.ping`, `.sewa`, `.list`, `.order`) diproses instan oleh handler internal tanpa memakan token atau kuota AI.
-* 🧠 **Multimodal AI Cerdas**: Obrolan biasa, foto gambar/struk belanja, hingga rekaman pesan suara (*voice note*) otomatis dipahami oleh model AI mutakhir (OpenAI / Gemini / Ollama).
-* 🛡️ **Zero-Bypass Security**: Aksi berisiko (L1 seperti broadcast, promote, kick, teruskan pesan) **wajib disetujui Owner** lewat tombol interaktif WhatsApp atau Web UI. AI tidak bisa memutuskan izinnya sendiri!
+* **Eksekusi Kilat**: Perintah ber-prefix (`.menu`, `.ping`, `.sewa`, `.list`, `.order`) diproses instan oleh router internal tanpa memakan token atau kuota AI.
+* **Multimodal AI**: Percakapan bebas, foto gambar/struk belanja, hingga rekaman pesan suara (*voice note*) dipahami secara otomatis oleh model AI (OpenAI / Gemini / Ollama).
+* **Zero-Bypass Security**: Aksi berisiko (tingkat L1 seperti broadcast, promote, kick, teruskan pesan) **wajib disetujui Owner** melalui tombol interaktif WhatsApp atau Web UI. AI tidak memiliki kewenangan meloloskan izinnya sendiri.
 
 ---
 
-## 🌟 Fitur Utama
+## <img src="./assets/icons/zap.svg" width="20" height="20" valign="middle" /> Fitur Utama
 
 | Modul | Status | Sorotan Fitur |
 | :--- | :---: | :--- |
-| **Hybrid Message Router** | ✅ Selesai | Prefix fleksibel (`.`), pemisahan alur command vs AI, respon instan < 50ms |
-| **Multimodal Vision & Audio** | ✅ Selesai | Baca gambar/struk belanja (Gemini/OpenAI) & transkripsi Voice Note (Whisper/Gemini) |
-| **52+ Modul Command Per Berkas** | ✅ Selesai | Toko, grup, moderasi, CS, tools media, downloader, terorganisir 1 file per modul |
-| **Native Flow Interactive Buttons** | ✅ Selesai | Tombol Quick Reply, Call CTA, URL CTA, Copy Code, Dropdown List di WhatsApp |
-| **8-Digit Pairing Code** | ✅ Selesai | Tautkan WhatsApp tanpa kamera via kode 8-digit langsung dari Web UI |
-| **Web Dashboard & Setup Wizard** | ✅ Selesai | Setup lengkap < 10 menit tanpa sentuh file `.env`, proteksi auth `scryptSync` |
-| **Context Compaction & Memory** | ✅ Selesai | Ringkasan riwayat percakapan otomatis (hemat token) & fakta pengguna jangka panjang |
-| **Persona Jutek / Dry Text** | ✅ Selesai | Gaya chat natural khas Indonesia (huruf kecil, singkat, to-the-point, kebal prompt injection) |
-| **Permission & Approval Engine** | ✅ Selesai | Matriks risiko L0/L1/L2, approval TTL 5 menit, kill switch darurat (`.stop`) |
-| **Ekspor & Impor Data** | ✅ Selesai | Ekspor/impor Persona (JSON) dan Audit Log (CSV/JSON) siap unduh dari Web UI |
-| **One-Line VPS Installer** | ✅ Selesai | Pasang di Ubuntu/Debian dalam satu perintah bash dengan service `systemd` otomatis |
+| **Hybrid Message Router** | <img src="./assets/icons/check.svg" width="16" height="16" valign="middle" /> Selesai | Prefix fleksibel (`.`), pemisahan alur command vs AI, respon instan < 50ms |
+| **Multimodal Vision & Audio** | <img src="./assets/icons/check.svg" width="16" height="16" valign="middle" /> Selesai | Analisis visual gambar/struk belanja & transkripsi Voice Note otomatis (Whisper / Gemini) |
+| **52+ Modul Command Per Berkas** | <img src="./assets/icons/check.svg" width="16" height="16" valign="middle" /> Selesai | Toko, grup, moderasi, CS, tools media, downloader; 1 file per modul fitur |
+| **Native Flow Interactive Buttons** | <img src="./assets/icons/check.svg" width="16" height="16" valign="middle" /> Selesai | Tombol Quick Reply, Call CTA, URL CTA, Copy Code, Dropdown List di WhatsApp |
+| **8-Digit Pairing Code** | <img src="./assets/icons/check.svg" width="16" height="16" valign="middle" /> Selesai | Tautkan WhatsApp tanpa kamera via kode 8-digit resmi langsung dari Web UI |
+| **Web Dashboard & Setup Wizard** | <img src="./assets/icons/check.svg" width="16" height="16" valign="middle" /> Selesai | Setup lengkap < 10 menit tanpa sentuh file `.env`, proteksi auth `scryptSync` |
+| **Context Compaction & Memory** | <img src="./assets/icons/check.svg" width="16" height="16" valign="middle" /> Selesai | Ringkasan riwayat percakapan otomatis (hemat token) & fakta pengguna jangka panjang |
+| **Persona Jutek / Dry Text** | <img src="./assets/icons/check.svg" width="16" height="16" valign="middle" /> Selesai | Gaya chat natural khas Indonesia (huruf kecil, singkat, to-the-point, kebal prompt injection) |
+| **Permission & Approval Engine** | <img src="./assets/icons/check.svg" width="16" height="16" valign="middle" /> Selesai | Matriks risiko L0/L1/L2, approval TTL 5 menit, kill switch darurat (`.stop`) |
+| **Ekspor & Impor Data** | <img src="./assets/icons/check.svg" width="16" height="16" valign="middle" /> Selesai | Ekspor/impor Persona (JSON) dan Audit Log (CSV/JSON) siap unduh dari Web UI |
+| **One-Line VPS Installer** | <img src="./assets/icons/check.svg" width="16" height="16" valign="middle" /> Selesai | Pasang di Ubuntu/Debian dalam satu perintah bash dengan service `systemd` otomatis |
 
 ---
 
-## 🚀 Instalasi Cepat
+## <img src="./assets/icons/terminal.svg" width="20" height="20" valign="middle" /> Instalasi Cepat
 
 ### Opsi 1: One-Line VPS Installer *(Rekomendasi untuk Linux/VPS)*
-Jalankan satu baris perintah ini di VPS Ubuntu/Debian kamu:
+Jalankan satu baris perintah ini di VPS Ubuntu/Debian:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/rozzak-id/ArKzorMD-BotWhatsapp/main/install.sh | sudo bash
 ```
 
-> 🎯 Skrip akan otomatis menginstal Node.js 22 LTS, clone repositori, kompilasi build, konfigurasi `.env`, dan mengaktifkan service background `systemd` (`arkzormd.service`). Setelah selesai, langsung buka `http://<IP-VPS>:3000` di browsermu!
+> Skrip otomatis memeriksa sistem, memasang Node.js 22 LTS, clone repositori, kompilasi build, konfigurasi `.env`, dan mengaktifkan background service `systemd` (`arkzormd.service`). Setelah selesai, buka `http://<IP-VPS>:3000` di peramban web.
 
 ---
 
@@ -104,15 +104,15 @@ npm run dev
 * **Web UI Development**: `http://localhost:5173`
 * **API Server**: `http://localhost:3000`
 
-> 💡 **Catatan Platform:** Koneksi WhatsApp *Live* memerlukan OS Linux (x64/arm64) karena dependensi kriptografi E2EE `onigis`. Pada sistem Windows / macOS, disarankan menggunakan Docker / WSL, atau gunakan mode `WHATSAPP_MODE=mock` untuk pengujian lokal.
+> **Catatan Platform:** Koneksi WhatsApp *Live* memerlukan OS Linux (x64/arm64) karena dependensi kriptografi E2EE `onigis`. Pada sistem Windows / macOS, gunakan Docker / WSL, atau jalankan mode `WHATSAPP_MODE=mock` untuk pengujian lokal tanpa akun WhatsApp nyata.
 
 ---
 
-## 🖥️ Web Dashboard & Wizard
+## <img src="./assets/icons/layout.svg" width="20" height="20" valign="middle" /> Web Dashboard & Wizard
 
-ArKzorMD dilengkapi Web Dashboard modern berbasis Preact & Vite yang ringan dan elegan.
+ArKzorMD dilengkapi Web Dashboard modern berbasis Preact & Vite yang ringan dan terintegrasi penuh.
 
-```
+```text
                     ┌──────────────────────────────────────────┐
                     │       ArKzorMD Web Setup Wizard          │
                     ├──────────────────────────────────────────┤
@@ -126,65 +126,63 @@ ArKzorMD dilengkapi Web Dashboard modern berbasis Preact & Vite yang ringan dan 
 ```
 
 ### Menu Web UI:
-* 📊 **Dashboard & Status**: Monitoring uptime, pemakaian RAM, status koneksi adapter, dan provider AI.
-* 🔐 **Antrean Approval**: Tinjau permintaan aksi berisiko L1 secara visual lengkap dengan parameter asli.
-* 👥 **Manajemen Persona**: Aktifkan, edit, ekspor, atau impor template persona dalam format JSON.
-* 💬 **Manajemen Grup**: Atur mode respons grup (`off`, `mention`, `active`) dan tetapkan persona override per grup.
-* 🧠 **Long-Term Memory**: Tinjau fakta memori yang dipelajari bot dari pengguna dengan fitur hapus/bersihkan.
-* 📜 **Audit Log Viewer**: Riwayat seluruh aktivitas dengan tombol ekspor **CSV** dan **JSON**.
+* **Dashboard & Status**: Monitoring uptime server, pemakaian memori RAM, status koneksi adapter, dan provider AI.
+* **Antrean Approval**: Tinjau permintaan aksi berisiko L1 secara visual lengkap dengan parameter asli.
+* **Manajemen Persona**: Aktifkan, edit, ekspor, atau impor template persona dalam format JSON.
+* **Manajemen Grup**: Atur mode respons grup (`off`, `mention`, `active`) dan tetapkan persona override per grup.
+* **Long-Term Memory**: Tinjau fakta memori pengguna yang dipelajari bot dengan fungsi hapus/bersihkan.
+* **Audit Log Viewer**: Riwayat seluruh aktivitas dengan tombol ekspor **CSV** dan **JSON**.
 
 ---
 
-## 🧠 Kemampuan AI & Multimodal
+## <img src="./assets/icons/cpu.svg" width="20" height="20" valign="middle" /> Kemampuan AI & Multimodal
 
-ArKzorMD ditenagai oleh provider AI fleksibel dan modular:
+ArKzorMD ditenagai oleh provider AI modular:
 
 ```text
        ┌───────────────┐
-       │ Pesan Masuk   │
+       │  Pesan Masuk  │
        └───────┬───────┘
                │
-        [Punya Media?]
-         ├── 📷 Foto/Gambar ────► Gemini InlineData / OpenAI Vision URL ──┐
-         ├── 🎙️ Voice Note  ────► Whisper / Gemini Transcribe ───────────┤
-         └── 💬 Teks Biasa  ─────────────────────────────────────────────┤
-                                                                         ▼
-                                                            ┌───────────────────────┐
-                                                            │  Jutek Persona Engine │
-                                                            │  (Bahasa Santai ID)   │
-                                                            └───────────┬───────────┘
-                                                                        │
-                                                            ┌───────────▼───────────┐
-                                                            │   Balasan Kontekstual │
-                                                            └───────────────────────┘
+        [Memiliki Media?]
+         ├── Foto / Dokumen  ──► Gemini InlineData / OpenAI Vision URL ──┐
+         ├── Pesan Suara(VN) ──► Whisper / Gemini Transcribe ───────────┤
+         └── Teks Biasa      ───────────────────────────────────────────┤
+                                                                        ▼
+                                                           ┌───────────────────────┐
+                                                           │  Jutek Persona Engine │
+                                                           │  (Bahasa Santai ID)   │
+                                                           └───────────┬───────────┘
+                                                                       │
+                                                           ┌───────────▼───────────┐
+                                                           │  Balasan Kontekstual  │
+                                                           └───────────────────────┘
 ```
 
 ### 1. Vision Multimodal (FR-18)
-Kirim foto struk pembelian, gambar meme, atau tangkapan layar dengan caption:
-> *"Berapa total belanja di struk ini?"*  
-Bot akan membaca teks dan total belanja secara akurat!
+Kirim foto struk pembelian, gambar ilustrasi, atau tangkapan layar dengan pertanyaan kontekstual. Bot membaca teks dan menganalisis visual secara presisi.
 
 ### 2. Transkripsi Voice Note (FR-19)
-Kirim rekaman suara (PTT/VN) dalam bahasa Indonesia atau daerah. Bot akan mentranskripsikannya dan membalas sesuai kepribadiannya tanpa canggung.
+Kirim rekaman suara (PTT/VN). Bot mengunduh audio terenkripsi, mentranskripsikannya ke teks bahasa Indonesia, dan meresponsnya sesuai persona aktif.
 
 ---
 
-## 📦 Katalog Command (52+ Modul)
+## <img src="./assets/icons/layers.svg" width="20" height="20" valign="middle" /> Katalog Perintah (52+ Modul)
 
-Perintah terorganisir rapi **1 berkas per fitur** di folder `packages/core/src/commands/`:
+Perintah terorganisir terpisah **1 berkas per fitur** di direktori `packages/core/src/commands/`:
 
 <details>
-<summary><b>👥 1. Group & Moderation Commands</b> (Klik untuk membuka)</summary>
+<summary><b><img src="./assets/icons/users.svg" width="16" height="16" valign="middle" /> 1. Group & Moderation Commands</b> (Klik untuk membuka)</summary>
 
 * `.admin` (`.kick`, `.add`, `.promote`, `.demote`, `.tagall`) — Kelola anggota grup.
 * `.hidetag` (`.ht`, `.h`) — Mention semua anggota grup tanpa teks tag panjang.
-* `.totag` (`.qtag`) — Teruskan pesan sambil mention semua member.
+* `.totag` (`.qtag`) — Teruskan pesan sambil mention seluruh anggota.
 * `.del` (`.delete`, `.d`) — Hapus pesan bot atau pesan anggota lain (Delete for Everyone).
-* `.groupset` (`.buka`, `.tutup`, `.open`, `.close`) — Buka atau tutup izin chat grup.
-* `.groupmodify` (`.setname`, `.setdesc`, `.linkgc`, `.revoke`) — Ubah nama, deskripsi, atau reset link grup.
+* `.groupset` (`.buka`, `.tutup`, `.open`, `.close`) — Buka atau tutup izin kirim pesan grup.
+* `.groupmodify` (`.setname`, `.setdesc`, `.linkgc`, `.revoke`) — Ubah nama, deskripsi, atau reset link undangan grup.
 * `.setppgrup` (`.setppgc`) — Ganti foto profil grup dari gambar langsung/reply.
 * `.autogroup` (`.autogc`) — Jadwalkan jam buka dan tutup grup otomatis harian.
-* `.antilink` — Proteksi otomatis kick/hapus pengirim link grup WA lain.
+* `.antilink` — Proteksi otomatis kick/hapus pengirim tautan grup WhatsApp lain.
 * `.badword` — Sensor dan blacklist kata-kata kotor/kasar.
 * `.warn` (`.unwarn`, `.cekwarn`) — Sistem 3x peringatan pelanggaran sebelum auto-kick.
 * `.welcome` (`.goodbye`) — Pesan sambutan member baru atau salam perpisahan.
@@ -195,7 +193,7 @@ Perintah terorganisir rapi **1 berkas per fitur** di folder `packages/core/src/c
 </details>
 
 <details>
-<summary><b>⚙️ 2. Core & System Commands</b> (Klik untuk membuka)</summary>
+<summary><b><img src="./assets/icons/settings.svg" width="16" height="16" valign="middle" /> 2. Core & System Commands</b> (Klik untuk membuka)</summary>
 
 * `.menu` (`.help`) — Menampilkan daftar menu interaktif terorganisir.
 * `.ping` (`.speed`) — Menampilkan latency, uptime server, dan pemakaian RAM.
@@ -204,11 +202,11 @@ Perintah terorganisir rapi **1 berkas per fitur** di folder `packages/core/src/c
 * `.stop` (`bot.panic`) — **Kill Switch Darurat**: Matikan seketika semua aksi berisiko L1.
 * `.public` / `.self` — Beralih antara mode publik atau mode khusus owner.
 * `.autoread` — Pengaturan centang biru otomatis.
-* `.mengetik` — Pengaturan efek visual *typing presence*.
+* `.mengetik` — Pengaturan efek visual status mengetik (*typing presence*).
 </details>
 
 <details>
-<summary><b>🛍️ 3. Toko & Customer Service Commands</b> (Klik untuk membuka)</summary>
+<summary><b><img src="./assets/icons/shopping-bag.svg" width="16" height="16" valign="middle" /> 3. Toko & Customer Service Commands</b> (Klik untuk membuka)</summary>
 
 * `.order` (`.pesanan`, `.invoice`) — Cek status pesanan toko berdasarkan nomor invoice.
 * `.faq` (`.bantuan`) — Pertanyaan yang sering diajukan & panduan transaksi.
@@ -218,7 +216,7 @@ Perintah terorganisir rapi **1 berkas per fitur** di folder `packages/core/src/c
 </details>
 
 <details>
-<summary><b>🛠️ 4. Media, Tools & AI Commands</b> (Klik untuk membuka)</summary>
+<summary><b><img src="./assets/icons/wrench.svg" width="16" height="16" valign="middle" /> 4. Media, Tools & AI Commands</b> (Klik untuk membuka)</summary>
 
 * `.ai` (`.azusa`, `.tanya`) — Obrolan langsung dengan asisten AI multimodal.
 * `.downloader` (`.tt`, `.ig`, `.yt`, `.fb`, dll.) — Pengunduh media serbaguna dari berbagai platform sosial.
@@ -230,9 +228,9 @@ Perintah terorganisir rapi **1 berkas per fitur** di folder `packages/core/src/c
 
 ---
 
-## 🛡️ Keamanan & Approval Engine
+## <img src="./assets/icons/shield.svg" width="20" height="20" valign="middle" /> Keamanan & Approval Engine
 
-Keamanan adalah prioritas utama arsitektur ArKzorMD:
+Keamanan adalah fondasi utama arsitektur ArKzorMD:
 
 ```text
 [Permintaan Tindakan AI]
@@ -246,8 +244,8 @@ Keamanan adalah prioritas utama arsitektur ArKzorMD:
       ├── L0 (Bebas)    ───► Eksekusi Langsung (Balas pesan, react, baca chat)
       ├── L1 (Sensitif) ───► MINTA APPROVAL KE OWNER (Kirim pesan kontak lain, kick, broadcast)
       │                       │
-      │                       ├── Owner Klik [✅ Setuju] ──► Eksekusi Aksi
-      │                       └── Owner Klik [❌ Tolak]   ──► Batalkan Aksi
+      │                       ├── Owner Setuju  ──► Eksekusi Aksi
+      │                       └── Owner Menolak ──► Batalkan Aksi
       └── L2 (Kritis)   ───► DITOLAK MUTLAK (Ubah secret, matikan server, ubah konfigurasi inti)
 ```
 
@@ -257,23 +255,23 @@ Keamanan adalah prioritas utama arsitektur ArKzorMD:
 
 ---
 
-## 🗺️ Roadmap Proyek
+## <img src="./assets/icons/book.svg" width="20" height="20" valign="middle" /> Roadmap Proyek
 
 - [x] **M0: Fondasi Monorepo** — Setup TypeScript, SQLite WAL, Fastify, & OnigiBaileys.
 - [x] **M1: AI Agent & Persona** — Provider OpenAI/Gemini, Short-Term Context Compaction, Persona Jutek.
 - [x] **M2: Izin & Approval** — Resolver L0/L1/L2, Approval Engine, Tombol Native Flow, Kill Switch.
 - [x] **M3: Web UI Dashboard** — Setup Wizard 6 langkah, scrypt auth, Pairing Code 8 digit, mode grup.
-- [x] **M4: Media AI Multimodal** — Analisis gambar vision & transkripsi pesan suara otomatis.
+- [x] **M4: Media AI Multimodal** — Analisis visual gambar & transkripsi rekaman audio otomatis.
 - [x] **M5: Hardening & Rilis** — One-line VPS installer (`install.sh`), ekspor/impor data, disclaimer & audit.
 - [ ] **M6: Fitur Pasca-Rilis (P1)** — Ekstraksi dokumen PDF, balasan suara TTS, dan adapter Telegram/Discord.
 
 ---
 
-## 📄 Lisensi & Kontribusi
+## <img src="./assets/icons/book.svg" width="20" height="20" valign="middle" /> Lisensi & Kontribusi
 
-Proyek ini dirilis di bawah lisensi [MIT](LICENSE). Kontribusi terbuka untuk siapa saja! Silakan baca [CONTRIBUTING.md](CONTRIBUTING.md) sebelum mengajukan Pull Request.
+Proyek ini dirilis di bawah lisensi [MIT](LICENSE). Kontribusi terbuka untuk siapa saja. Silakan baca [CONTRIBUTING.md](CONTRIBUTING.md) sebelum mengajukan Pull Request.
 
 <div align="center">
-  <sub>Dibangun dengan dedikasi untuk ekosistem AI WhatsApp yang tangguh, aman, dan menyenangkan.</sub><br>
+  <sub>Dibangun dengan dedikasi untuk ekosistem AI WhatsApp yang tangguh, aman, dan berkinerja tinggi.</sub><br>
   <b><a href="https://github.com/rozzak-id/ArKzorMD-BotWhatsapp">ArKzorMD GitHub Repository</a></b>
 </div>
