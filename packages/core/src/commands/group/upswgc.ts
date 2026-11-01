@@ -14,3 +14,4 @@ export const upswgcCommand: CommandDefinition = {
     return '📲 Media/teks berhasil diunggah ke Story Status WhatsApp bot!';
   },
 };
+

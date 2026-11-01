@@ -12,3 +12,4 @@ export const afkCommand: CommandDefinition = {
     return `💤 *${name}* sekarang dalam status AFK!\nAlasan: _${reason}_\nBot akan memberitahu siapa saja yang memanggilmu.`;
   },
 };
+

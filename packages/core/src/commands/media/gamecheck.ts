@@ -44,3 +44,4 @@ export const gamecheckCommand: CommandDefinition = {
       .join('\n');
   },
 };
+

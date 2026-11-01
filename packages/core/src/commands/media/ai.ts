@@ -14,3 +14,4 @@ export const aiCommand: CommandDefinition = {
     return `🤖 _Memproses pertanyaan via AI Engine..._\n\nKetik langsung tanpa prefix untuk bercakap-cakap santai dengan AI persona.`;
   },
 };
+

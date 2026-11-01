@@ -27,3 +27,4 @@ export const warnCommand: CommandDefinition = {
     return `⚠️ *PERINGATAN RESMI*\n\nTarget: ${user}\nAlasan: ${reason}\nTotal strike: *1/3*\n_Hati-hati! 3x peringatan akan dikeluarkan otomatis._`;
   },
 };
+

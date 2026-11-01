@@ -14,3 +14,4 @@ export const iqcCommand: CommandDefinition = {
     return `📱 Membuat gelembung chat iPhone iOS untuk: "${text}"...`;
   },
 };
+

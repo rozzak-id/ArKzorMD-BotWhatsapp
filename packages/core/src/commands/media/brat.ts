@@ -14,3 +14,4 @@ export const bratCommand: CommandDefinition = {
     return `🟩 Membuat stiker Brat untuk: *"${text}"*...`;
   },
 };
+

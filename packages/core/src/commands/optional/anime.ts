@@ -27,3 +27,4 @@ export const animeCommand: CommandDefinition = {
     return `🍙 Menemukan anime: *${query}* [Score: 9.1 / MyAnimeList]`;
   },
 };
+

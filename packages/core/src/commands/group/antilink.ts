@@ -15,3 +15,4 @@ export const antilinkCommand: CommandDefinition = {
     return `🛡️ Fitur Anti-Link Grup WhatsApp sekarang *${enable ? 'AKTIF' : 'NONAKTIF'}* di grup ini.`;
   },
 };
+

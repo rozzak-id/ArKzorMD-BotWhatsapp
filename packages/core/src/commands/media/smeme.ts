@@ -14,3 +14,4 @@ export const smemeCommand: CommandDefinition = {
     return `🎭 Membuat stiker meme dengan teks: "${text}"...`;
   },
 };
+

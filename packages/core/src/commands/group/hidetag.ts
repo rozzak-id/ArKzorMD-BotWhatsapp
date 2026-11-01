@@ -17,3 +17,4 @@ export const hidetagCommand: CommandDefinition = {
     return `📢 *PENGUMUMAN*\n\n${text || '[Media Lampiran]'}`;
   },
 };
+

@@ -10,3 +10,4 @@ export const delCommand: CommandDefinition = {
     return '🗑️ Permintaan hapus pesan diproses.';
   },
 };
+

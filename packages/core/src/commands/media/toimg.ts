@@ -10,3 +10,4 @@ export const toimgCommand: CommandDefinition = {
     return '🖼️ Mengonversi stiker menjadi gambar...';
   },
 };
+

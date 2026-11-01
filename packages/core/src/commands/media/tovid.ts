@@ -10,3 +10,4 @@ export const tovidCommand: CommandDefinition = {
     return '🎬 Mengonversi stiker animasi menjadi video MP4...';
   },
 };
+

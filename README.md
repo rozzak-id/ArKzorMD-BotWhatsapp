@@ -6,13 +6,12 @@ cukup bicara biasa, AI memahami maksud dan menjalankan aksi lewat tool. Setiap a
 berisiko melewati **Permission Engine** dan **persetujuan Owner** yang ditegakkan oleh
 kode — bukan oleh AI.
 
-Status saat ini: **M1 — provider AI asli**. Fondasi M0 (repo, core pipeline,
-permission/approval, SQLite, API server, Web UI, dan adapter WhatsApp berbasis
-**`onigis`**) sudah terpasang. M1 menambahkan provider **OpenAI-compatible**
-(OpenAI, OpenRouter, Ollama, vLLM) dan **Gemini** dengan tool calling, timeout, serta
-fallback model. Mode `mock` tetap berjalan di semua OS; koneksi WhatsApp **live**
-memerlukan Linux x64/arm64 (Docker/WSL) karena paket E2EE native
-`oktz-signal`/`oktz-curve25519` hanya menyediakan prebuild Linux.
+Status saat ini: **v0.1.0 (Milestone M0, M1, M2, dan M3 Selesai)**. Fondasi core pipeline,
+permission/approval L0/L1/L2, katalog 86 tool, tombol interaktif Native Flow onigis,
+provider AI OpenAI & Gemini, context compaction, Setup Wizard 6 langkah,
+dan modul command per berkas sudah terpasang dan siap digunakan. Mode `mock` tetap
+berjalan di semua OS; koneksi WhatsApp **live** memerlukan Linux x64/arm64 (Docker/WSL)
+karena paket E2EE native `oktz-signal`/`oktz-curve25519` hanya menyediakan prebuild Linux.
 
 > ⚠️ **Risiko akun WhatsApp.** Bot ini memakai protokol tidak resmi (Onigi/Baileys).
 > Gunakan nomor khusus, jangan nomor utama. Risiko pemblokiran ada pada pengguna. Baca
@@ -46,11 +45,12 @@ memerlukan Linux x64/arm64 (Docker/WSL) karena paket E2EE native
 | Kill switch | ✅ | `.stop` / `.stop off`, memblokir semua L1 |
 | SQLite + audit log | ✅ | Skema PRD + redaksi nilai sensitif |
 | Bot pipeline | ✅ | Filter pesan, mode grup, humanizer, rate limit, audit |
-| Web UI flat | ✅ (shell) | Dashboard live, persona, pengguna, approval, tools, audit, platform |
-| API + WebSocket | ✅ | Status real-time, endpoint approval ber-token |
-| Adapter WhatsApp | ✅ | `onigis` 10.1.0-rc.12: QR/pairing, reconnect backoff, teks/media/reaction, tombol approval + fallback command |
-| Provider AI asli | ✅ | OpenAI-compatible (OpenAI/OpenRouter/Ollama) + Gemini, tool calling, timeout, fallback model |
-| Memori jangka pendek | ✅ | 20 pesan terakhir per chat; ringkasan otomatis menyusul |
+| Web UI flat | ✅ | Dashboard live, Setup Wizard 6 langkah, persona, pengguna, grup, persetujuan, memori, tools, audit |
+| Autentikasi Web UI | ✅ | Login & sesi aman menggunakan scryptSync bawaan node:crypto |
+| API + WebSocket | ✅ | Status real-time, endpoint approval ber-token, pairing code 8-digit |
+| Adapter WhatsApp | ✅ | `onigis` 10.1.0-rc.12: QR/Pairing code 8-digit, reconnect backoff, teks/media/reaction, tombol approval Native Flow + fallback |
+| Provider AI asli | ✅ | OpenAI-compatible (OpenAI/OpenRouter/Ollama) + Gemini, tool calling, context compaction, fallback model |
+| Memori & Persona | ✅ | Peringkasan token otomatis (FR-08), manajemen memori web, persona Jutek Dry Text |
 | Adapter Telegram/Discord | 🚧 stub | Kartu Coming Soon di Web UI |
 | Media (analisis gambar/VN) | ⏳ | M4/M6 |
 
@@ -360,13 +360,13 @@ Laporkan kerentanan sesuai [SECURITY.md](SECURITY.md).
 
 | Milestone | Status | Isi |
 | --- | --- | --- |
-| M0 Fondasi | 🚧 | Repo, core, adapter onigis, SQLite, role; live perlu verifikasi di Linux/Docker |
-| M1 AI Agent | ✅ | Provider OpenAI-compatible/Gemini, persona, memori 20 pesan, tool calling, fallback model; ringkasan otomatis menyusul |
-| M2 Izin & approval | ✅ | Engine, level resolver dinamis (Bagian 3), katalog 86 tool, 14 tool P0 aktif, proteksi SSRF, invariant eksekusi L1, audit tool |
-| M3 Web UI | 🚧 | Shell selesai; auth, wizard, editor, aksi pengguna |
+| M0 Fondasi | ✅ | Repo, core, adapter onigis, SQLite, role |
+| M1 AI Agent | ✅ | Provider OpenAI/Gemini, persona Jutek, ringkasan konteks otomatis (FR-08), fallback model |
+| M2 Izin & approval | ✅ | Permission engine, resolver L0/L1/L2, 86 tool katalog, SSRF guard, tombol Native Flow, audit log |
+| M3 Web UI | ✅ | Setup Wizard 6 langkah, auth scrypt & session tokens, manajemen grup & persona override, pairing code 8 digit, web memory manager |
 | M4 Media | ⏳ | Analisis gambar, transkripsi voice note |
 | M5 Hardening | ⏳ | Uji keamanan, dokumentasi, rilis v0.1 |
-| M6 Pasca-rilis | ⏳ | Dokumen, TTS, stiker, memori panjang, Telegram/Discord |
+| M6 Pasca-rilis | ⏳ | Dokumen, TTS, stiker, Telegram/Discord |
 
 ## Lisensi
 

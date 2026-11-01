@@ -22,3 +22,4 @@ export const qrisCommand: CommandDefinition = {
     ].join('\n');
   },
 };
+

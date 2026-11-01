@@ -15,3 +15,4 @@ export const gcCommand: CommandDefinition = {
     return ['*🏢 DAFTAR GRUP BOT*', ...lines].join('\n');
   },
 };
+

@@ -23,3 +23,4 @@ export const faqCommand: CommandDefinition = {
     ].join('\n');
   },
 };
+

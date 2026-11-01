@@ -39,3 +39,4 @@ export const stalkerCommand: CommandDefinition = {
     ].join('\n');
   },
 };
+

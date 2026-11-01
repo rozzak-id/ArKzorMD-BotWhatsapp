@@ -27,3 +27,4 @@ export const welcomeCommand: CommandDefinition = {
     return `👋 Fitur Welcome & Goodbye sekarang *${enable ? 'AKTIF' : 'NONAKTIF'}* di grup ini.`;
   },
 };
+

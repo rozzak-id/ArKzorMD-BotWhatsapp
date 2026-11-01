@@ -16,3 +16,4 @@ export const sewaCommand: CommandDefinition = {
     ].join('\n');
   },
 };
+

@@ -74,3 +74,4 @@ describe('Modular Commands Architecture', () => {
     expect(res).toContain('Akses Ditolak');
   });
 });
+

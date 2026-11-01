@@ -15,3 +15,4 @@ export const komplainCommand: CommandDefinition = {
     return `📨 Laporan kendala dari *${sender}* telah diteruskan ke Customer Service.\n_Pesan:_ "${report}"\nTim kami akan segera memeriksa laporan Anda.`;
   },
 };
+

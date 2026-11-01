@@ -57,3 +57,4 @@ export const toolsCommand: CommandDefinition = {
     ].join('\n');
   },
 };
+

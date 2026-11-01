@@ -31,3 +31,4 @@ export const groupmodifyCommand: CommandDefinition = {
     return 'Format perintah: `.setname <nama>`, `.setdesc <teks>`, `.linkgc`, atau `.revoke`';
   },
 };
+

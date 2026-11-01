@@ -14,3 +14,4 @@ export const musicCommand: CommandDefinition = {
     return `🎵 Sedang mencari lagu: *"${query}"*...\nAudio akan segera dikirimkan.`;
   },
 };
+

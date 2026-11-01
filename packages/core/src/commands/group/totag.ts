@@ -13,3 +13,4 @@ export const totagCommand: CommandDefinition = {
     return '📢 Pesan diteruskan dengan mention seluruh anggota grup.';
   },
 };
+

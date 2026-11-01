@@ -14,3 +14,4 @@ export const bypaslinkCommand: CommandDefinition = {
     return `🔓 *HASIL BYPASS LINK*\n\n• Link Asal: ${url}\n• Link Asli (Direct): ${url.replace('sflink.me', 'direct-download.com')}\n\n_Tautan langsung siap diunduh tanpa iklan._`;
   },
 };
+

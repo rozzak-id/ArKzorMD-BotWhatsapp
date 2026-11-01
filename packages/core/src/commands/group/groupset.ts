@@ -34,3 +34,4 @@ export const groupsetCommand: CommandDefinition = {
       : '🔓 *Grup Dibuka*. Semua anggota sekarang dapat mengirim pesan.';
   },
 };
+

@@ -17,3 +17,4 @@ export const daftargcCommand: CommandDefinition = {
     return 'Gunakan perintah ini di dalam grup atau sertakan link undangan grup WhatsApp.';
   },
 };
+

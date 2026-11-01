@@ -37,3 +37,4 @@ export const listCommand: CommandDefinition = {
     ].join('\n');
   },
 };
+

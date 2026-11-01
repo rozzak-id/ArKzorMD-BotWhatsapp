@@ -14,3 +14,4 @@ export const channelCommand: CommandDefinition = {
     return `📢 Pesan berhasil diposting ke Saluran WhatsApp resmi.`;
   },
 };
+

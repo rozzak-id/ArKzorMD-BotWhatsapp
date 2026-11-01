@@ -23,3 +23,4 @@ export const groupinfoCommand: CommandDefinition = {
     ].join('\n');
   },
 };
+

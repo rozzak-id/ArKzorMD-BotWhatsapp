@@ -15,3 +15,4 @@ export const nsfwCommand: CommandDefinition = {
     return '⛔ *Akses Ditolak*. Bot ArKzorMD melarang keras konten pornografi, SARA, dan NSFW sesuai standar kepatuhan WhatsApp dan etika AI.';
   },
 };
+

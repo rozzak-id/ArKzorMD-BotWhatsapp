@@ -40,3 +40,4 @@ export const groupCommands: CommandDefinition[] = [
   gcCommand,
   upswgcCommand,
 ];
+

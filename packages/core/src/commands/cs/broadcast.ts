@@ -14,3 +14,4 @@ export const broadcastCommand: CommandDefinition = {
     return `📢 Siaran pesan ke seluruh pengguna dijadwalkan dengan proteksi jeda anti-banned.`;
   },
 };
+

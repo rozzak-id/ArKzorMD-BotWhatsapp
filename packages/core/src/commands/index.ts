@@ -29,3 +29,4 @@ export function getAllCommands(): CommandDefinition[] {
     ...mediaCommands,
   ];
 }
+

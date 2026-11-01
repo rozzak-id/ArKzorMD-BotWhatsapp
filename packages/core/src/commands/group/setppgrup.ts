@@ -13,3 +13,4 @@ export const setppgrupCommand: CommandDefinition = {
     return '🖼️ Foto profil grup berhasil diperbarui.';
   },
 };
+

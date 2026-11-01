@@ -14,3 +14,4 @@ export const optionalCommands: CommandDefinition[] = [
   animeCommand,
   nsfwCommand,
 ];
+

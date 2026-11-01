@@ -26,3 +26,4 @@ export const makerCommand: CommandDefinition = {
     return `🎨 Permintaan foto efek *${rawCmd}* sedang diproses...`;
   },
 };
+

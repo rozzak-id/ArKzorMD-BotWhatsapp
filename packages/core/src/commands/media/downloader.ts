@@ -45,3 +45,4 @@ export const downloaderCommand: CommandDefinition = {
     return `📥 Mengambil media dari: ${url}...\nMedia sedang diproses dan akan segera dikirim.`;
   },
 };
+

@@ -26,3 +26,4 @@ export const badwordCommand: CommandDefinition = {
     return `🤬 Filter Badword sensor kata kasar sekarang *${enable ? 'AKTIF' : 'NONAKTIF'}*.`;
   },
 };
+

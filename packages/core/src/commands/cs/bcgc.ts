@@ -14,3 +14,4 @@ export const bcgcCommand: CommandDefinition = {
     return `📢 Siaran pesan ke seluruh grup WhatsApp berhasil dijadwalkan.`;
   },
 };
+

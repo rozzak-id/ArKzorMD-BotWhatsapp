@@ -25,3 +25,4 @@ export const searchCommand: CommandDefinition = {
     return `🔍 Mencari konten untuk: *"${query}"*... Hasil akan segera dikirimkan.`;
   },
 };
+

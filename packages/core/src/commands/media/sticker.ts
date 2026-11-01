@@ -10,3 +10,4 @@ export const stickerCommand: CommandDefinition = {
     return '✨ Konversi stiker WhatsApp sedang diproses...';
   },
 };
+

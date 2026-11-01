@@ -27,3 +27,4 @@ export const autogroupCommand: CommandDefinition = {
     return `🕒 Jadwal buka/tutup grup otomatis sekarang *${enable ? 'AKTIF' : 'NONAKTIF'}*.`;
   },
 };
+
