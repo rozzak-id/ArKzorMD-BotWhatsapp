@@ -7,7 +7,7 @@ import { APP_VERSION, buildPlatforms, buildStatus } from '../status.js';
 import { createDynamicAiProvider } from '../bootstrap.js';
 
 const personaUpsertSchema = z.object({
-  id: z.string().min(1).max(50).regex(/^[a-z0-9_-]+$/i, 'ID persona harus alfanumerik (huruf, angka, strip, underscore).'),
+  id: z.string().min(1).max(50).regex(/^[a-z0-9_-]+$/i, 'ID persona harus alfanumerik huruf, angka, strip, underscore.'),
   name: z.string().min(1).max(80),
   style: z.string().min(1).max(100).default('santai'),
   language: z.string().min(1).max(10).default('id'),
@@ -419,7 +419,7 @@ export function registerApiRoutes(app: FastifyInstance, context: AppContext): vo
         latencyMs,
         provider,
         model,
-        reply: res.text || '(Koneksi berhasil)',
+        reply: res.text || 'Koneksi berhasil',
       };
     } catch (err) {
       const latencyMs = Date.now() - startTime;
@@ -515,7 +515,7 @@ export function registerApiRoutes(app: FastifyInstance, context: AppContext): vo
       return { ok: true, message: 'Data dan status setup berhasil di-reset ke kondisi awal.' };
     }
 
-    return reply.code(400).send({ error: 'Target reset tidak valid (memory | audit | factory_reset).' });
+    return reply.code(400).send({ error: 'Target reset tidak valid: pilih memory, audit, atau factory_reset.' });
   });
 
   app.post('/api/settings/kill-switch', async (request, reply) => {
@@ -778,7 +778,7 @@ export function registerApiRoutes(app: FastifyInstance, context: AppContext): vo
     }
     if (phone.length < 8 || phone.length > 15) {
       return reply.code(400).send({
-        error: 'Nomor telepon harus dalam format internasional yang valid (mis. 628123456789).',
+        error: 'Nomor telepon harus dalam format internasional yang valid seperti 628123456789.',
       });
     }
     if (!context.adapter.requestPairingCode) {

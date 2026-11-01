@@ -129,7 +129,7 @@ export class MockProvider implements AiProvider {
     }
 
     return {
-      text: `Aku dengar: "${lastUser}". (mock provider)`,
+      text: `Aku dengar: "${lastUser}". Respon simulasi.`,
       toolCalls: [],
     };
   }

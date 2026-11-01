@@ -1,5 +1,6 @@
 import { randomBytes, scryptSync, timingSafeEqual } from 'node:crypto';
 import type { FastifyReply, FastifyRequest } from 'fastify';
+import type { SettingsStore } from '@arkzormd/core';
 import type { AppContext } from './context.js';
 
 const SETTING_PASSWORD_HASH = 'admin_password_hash';
@@ -34,38 +35,80 @@ interface Session {
 
 export class SessionManager {
   private sessions = new Map<string, Session>();
+  private store?: SettingsStore;
+
+  constructor(store?: SettingsStore) {
+    this.store = store;
+  }
+
+  setStore(store: SettingsStore): void {
+    this.store = store;
+  }
 
   createSession(): string {
     const token = randomBytes(32).toString('hex');
     const now = Date.now();
-    this.sessions.set(token, {
+    const session: Session = {
       token,
       createdAt: now,
       expiresAt: now + SESSION_TTL_MS,
-    });
+    };
+    this.sessions.set(token, session);
+    if (this.store) {
+      try {
+        this.store.set(`session:${token}`, JSON.stringify(session));
+      } catch {
+        // Store belum siap
+      }
+    }
     return token;
   }
 
   isValidSession(token?: string): boolean {
     if (!token) return false;
-    const session = this.sessions.get(token);
+    let session = this.sessions.get(token);
+    if (!session && this.store) {
+      try {
+        const raw = this.store.get(`session:${token}`);
+        if (raw) {
+          const parsed = JSON.parse(raw) as Session;
+          if (parsed && typeof parsed.expiresAt === 'number') {
+            session = parsed;
+            this.sessions.set(token, session);
+          }
+        }
+      } catch {
+        // Abaikan parse error
+      }
+    }
     if (!session) return false;
     if (Date.now() > session.expiresAt) {
       this.sessions.delete(token);
+      if (this.store) {
+        try {
+          this.store.set(`session:${token}`, '');
+        } catch {}
+      }
       return false;
     }
     return true;
   }
 
   revokeSession(token: string): boolean {
-    return this.sessions.delete(token);
+    const deleted = this.sessions.delete(token);
+    if (this.store) {
+      try {
+        this.store.set(`session:${token}`, '');
+      } catch {}
+    }
+    return deleted || true;
   }
 
   cleanExpired(): void {
     const now = Date.now();
     for (const [token, session] of this.sessions.entries()) {
       if (now > session.expiresAt) {
-        this.sessions.delete(token);
+        this.revokeSession(token);
       }
     }
   }
@@ -122,7 +165,12 @@ export function isAuthenticated(context: AppContext, request: FastifyRequest): b
     return true;
   }
 
-  // 2. Cek session aktif dari login Web UI
+  // Sambungkan persistent store SQLite agar session tahan restart server
+  if (context.stores?.settings) {
+    sessionManager.setStore(context.stores.settings);
+  }
+
+  // 2. Cek session aktif dari database SQLite atau memori
   return sessionManager.isValidSession(token);
 }
 

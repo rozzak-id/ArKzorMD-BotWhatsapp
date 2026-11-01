@@ -353,7 +353,7 @@ export function SetupPage({ status, onFinish }: SetupPageProps) {
         text: testText,
         personaId: selectedPersona || undefined,
       });
-      const reply = res.text || '(Bot menerima pesan tetapi tidak mengirim teks)';
+      const reply = res.text || 'Bot menerima pesan tetapi tidak mengirim teks';
       setTestResponse(reply);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));

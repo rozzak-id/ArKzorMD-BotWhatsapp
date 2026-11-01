@@ -16,7 +16,7 @@ interface ChatMessage {
 
 const PRESET_PROMPTS = [
   'Halo, siapa namamu dan apa kemampuanmu?',
-  'Bagaimana sistem persetujuan (approval) bekerja di bot ini?',
+  'Bagaimana sistem persetujuan approval bekerja di bot ini?',
   'Buatkan draft pengumuman penting untuk grup WhatsApp santai.',
   'Cek apa saja fitur media dan command yang tersedia.',
 ];
@@ -90,7 +90,15 @@ export function PlaygroundPage() {
 
       setMessages((prev) => [...prev, assistantMsg]);
     } catch (err) {
-      setChatError(err instanceof Error ? err.message : String(err));
+      const msg = err instanceof Error ? err.message : String(err);
+      if (msg.includes('Sesi kedaluwarsa') || msg.includes('token admin tidak valid')) {
+        setChatError('Sesi admin diperlukan untuk menguji AI. Silakan masuk terlebih dahulu.');
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('arkzor:unauthorized'));
+        }
+      } else {
+        setChatError(msg);
+      }
     } finally {
       setSending(false);
     }
@@ -126,7 +134,7 @@ export function PlaygroundPage() {
               >
                 {personaData.personas.map((p) => (
                   <option key={p.id} value={p.id}>
-                    {p.name} ({p.id}) {p.id === personaData.active ? '· Aktif' : ''}
+                    {p.name} - {p.id} {p.id === personaData.active ? '· Aktif' : ''}
                   </option>
                 ))}
               </select>
@@ -284,7 +292,7 @@ export function PlaygroundPage() {
               fontSize: '13.5px',
               lineHeight: '1.4',
             }}
-            placeholder="Ketik pesan untuk bot... (Enter untuk kirim, Shift+Enter untuk baris baru)"
+            placeholder="Ketik pesan untuk bot... Tekan Enter untuk kirim, Shift+Enter untuk baris baru"
             value={inputText}
             onInput={(e) => setInputText((e.target as HTMLTextAreaElement).value)}
             onKeyDown={handleKeyDown}
@@ -306,4 +314,3 @@ export function PlaygroundPage() {
     </div>
   );
 }
-

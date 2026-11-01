@@ -24,6 +24,10 @@ export function setAuthToken(token: string | null): void {
   }
 }
 
+export function clearAuthToken(): void {
+  localStorage.removeItem(TOKEN_KEY);
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const headers = new Headers(init?.headers);
   headers.set('accept', 'application/json');
@@ -39,6 +43,9 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const data = text ? (JSON.parse(text) as unknown) : null;
 
   if (!response.ok) {
+    if (response.status === 401 && typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('arkzor:unauthorized'));
+    }
     const message =
       data && typeof data === 'object' && 'error' in data
         ? String((data as { error: unknown }).error)

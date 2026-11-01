@@ -69,6 +69,7 @@ export function registerAuthRoutes(app: FastifyInstance, context: AppContext): v
     }
 
     setAdminPassword(context, parsed.data.password);
+    sessionManager.setStore(context.stores.settings);
     const token = sessionManager.createSession();
 
     context.stores.audit.append({
@@ -105,6 +106,7 @@ export function registerAuthRoutes(app: FastifyInstance, context: AppContext): v
       return reply.code(401).send({ error: 'Password tidak benar.' });
     }
 
+    sessionManager.setStore(context.stores.settings);
     const token = sessionManager.createSession();
     return {
       ok: true,
@@ -116,6 +118,7 @@ export function registerAuthRoutes(app: FastifyInstance, context: AppContext): v
   app.post('/api/auth/logout', async (request: FastifyRequest) => {
     const token = extractToken(request);
     if (token) {
+      sessionManager.setStore(context.stores.settings);
       sessionManager.revokeSession(token);
     }
     return { ok: true };

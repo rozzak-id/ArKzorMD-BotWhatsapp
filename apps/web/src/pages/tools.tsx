@@ -11,7 +11,7 @@ const RISK_TONE: Record<RiskLevel, Tone> = {
 };
 
 const RISK_LABEL: Record<RiskLevel, string> = {
-  L0: 'L0 · Bebas (Auto)',
+  L0: 'L0 · Bebas Otomatis',
   L1: 'L1 · Butuh Approval',
   L2: 'L2 · Khusus Owner / Admin',
 };

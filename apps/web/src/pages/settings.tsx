@@ -193,7 +193,7 @@ export function SettingsPage() {
       {/* 1. Pengaturan AI Provider & API Key */}
       <Card
         title="Pengaturan Mesin AI & API Key"
-        subtitle="Pilih provider LLM, konfigurasi endpoint kustom (seperti 9Router / Ollama), dan masukkan API Key"
+        subtitle="Pilih provider LLM, konfigurasi endpoint kustom seperti 9Router atau Ollama, dan masukkan API Key"
         icon={<Icons.Cpu width={16} height={16} />}
       >
         {loading && <Loading text="Memuat konfigurasi…" />}

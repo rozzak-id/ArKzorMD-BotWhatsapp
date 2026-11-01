@@ -36,6 +36,31 @@ describe('Auth Utilities', () => {
     expect(sm.isValidSession(token)).toBe(false);
   });
 
+  it('persists and restores sessions across server restart via SettingsStore', () => {
+    const fakeDb = new Map<string, string>();
+    const mockStore: any = {
+      get: (k: string) => fakeDb.get(k),
+      set: (k: string, v: string) => fakeDb.set(k, v),
+    };
+
+    const sm1 = new SessionManager(mockStore);
+    const token = sm1.createSession();
+    expect(sm1.isValidSession(token)).toBe(true);
+    expect(fakeDb.has(`session:${token}`)).toBe(true);
+
+    // Simulasi server restart: instance baru dengan store yang sama
+    const sm2 = new SessionManager(mockStore);
+    expect(sm2.isValidSession(token)).toBe(true);
+
+    // Revoke pada sm2 harus mengupdate persistent store
+    sm2.revokeSession(token);
+    expect(sm2.isValidSession(token)).toBe(false);
+
+    // sm3 instance baru setelah revoke juga harus invalid
+    const sm3 = new SessionManager(mockStore);
+    expect(sm3.isValidSession(token)).toBe(false);
+  });
+
   it('handles setup completed flag and password verification via mock context', () => {
     const settingsMap = new Map<string, string>();
     const mockContext = {
