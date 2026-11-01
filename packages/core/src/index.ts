@@ -92,6 +92,14 @@ export {
 } from './agent/base-provider.js';
 export { OpenAiProvider, type OpenAiProviderOptions } from './agent/openai-provider.js';
 export { GeminiProvider, type GeminiProviderOptions } from './agent/gemini-provider.js';
+export {
+  WhisperAudioTranscriber,
+  GeminiAudioTranscriber,
+  type AudioTranscriber,
+  type AudioTranscriptionOptions,
+  type WhisperTranscriberOptions,
+  type GeminiTranscriberOptions,
+} from './agent/transcriber.js';
 
 export { buildSystemPrompt } from './persona/prompt.js';
 

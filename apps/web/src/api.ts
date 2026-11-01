@@ -53,6 +53,15 @@ export const api = {
   platforms: () => request<{ platforms: PlatformCard[] }>('/api/platforms'),
   approvals: () => request<ApprovalResponse>('/api/approvals'),
   personas: () => request<PersonaResponse>('/api/personas'),
+  activatePersona: (id: string) =>
+    request<{ ok: boolean; active: string }>(`/api/personas/${encodeURIComponent(id)}/activate`, {
+      method: 'POST',
+    }),
+  importPersonas: (personas: any[]) =>
+    request<{ ok: boolean; imported: number }>('/api/personas/import', {
+      method: 'POST',
+      body: JSON.stringify({ personas }),
+    }),
   users: () => request<{ users: import('./types').User[] }>('/api/users'),
   tools: () => request<ToolResponse>('/api/tools'),
   audit: (limit = 50) => request<AuditResponse>(`/api/audit?limit=${limit}`),

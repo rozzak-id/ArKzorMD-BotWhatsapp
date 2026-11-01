@@ -1,6 +1,6 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { z } from 'zod';
-import type { InternalMessage } from '@arkzormd/core';
+import type { InternalMessage, Persona } from '@arkzormd/core';
 import type { AppContext } from '../context.js';
 import { requireAdmin } from '../auth.js';
 import { APP_VERSION, buildPlatforms, buildStatus } from '../status.js';
@@ -87,6 +87,62 @@ export function registerApiRoutes(app: FastifyInstance, context: AppContext): vo
     personas: context.stores.personas.list(),
   }));
 
+  app.get('/api/personas/export', async (_request, reply) => {
+    const list = context.stores.personas.list();
+    const activeId = context.stores.personas.getActive()?.id ?? null;
+    reply.header('Content-Type', 'application/json');
+    reply.header('Content-Disposition', 'attachment; filename="arkzormd-personas.json"');
+    return {
+      version: '1.0',
+      exportedAt: new Date().toISOString(),
+      activeId,
+      personas: list,
+    };
+  });
+
+  app.post('/api/personas/import', async (request, reply) => {
+    const body = request.body as Record<string, unknown> | undefined;
+    const items = Array.isArray(body?.personas)
+      ? body.personas
+      : Array.isArray(body)
+        ? body
+        : null;
+    if (!items || items.length === 0) {
+      reply.code(400);
+      return { error: 'Payload tidak valid: diharapkan daftar personas' };
+    }
+
+    let importedCount = 0;
+    for (const item of items) {
+      if (
+        typeof item === 'object' &&
+        item !== null &&
+        typeof (item as Record<string, unknown>).id === 'string' &&
+        typeof (item as Record<string, unknown>).name === 'string'
+      ) {
+        const raw = item as Record<string, unknown>;
+        const persona: Persona = {
+          id: String(raw.id),
+          name: String(raw.name),
+          language: typeof raw.language === 'string' ? raw.language : 'id',
+          style: typeof raw.style === 'string' ? raw.style : 'jutek',
+          forbiddenTopics: Array.isArray(raw.forbiddenTopics) ? (raw.forbiddenTopics as string[]) : [],
+          typingDelay: ['natural', 'fast', 'slow'].includes(raw.typingDelay as string)
+            ? (raw.typingDelay as 'natural' | 'fast' | 'slow')
+            : 'natural',
+          greeting: typeof raw.greeting === 'string' ? raw.greeting : undefined,
+          examples: Array.isArray(raw.examples) ? (raw.examples as Array<{ user: string; bot: string }>) : [],
+          extraInstructions: typeof raw.extraInstructions === 'string' ? raw.extraInstructions : undefined,
+          model: typeof raw.model === 'object' && raw.model !== null ? (raw.model as { temperature?: number; maxTokens?: number }) : undefined,
+        };
+        context.stores.personas.upsert(persona);
+        importedCount += 1;
+      }
+    }
+
+    return { ok: true, imported: importedCount };
+  });
+
   app.get('/api/users', async () => ({ users: context.stores.users.list() }));
 
   app.get('/api/tools', async () => ({
@@ -99,6 +155,50 @@ export function registerApiRoutes(app: FastifyInstance, context: AppContext): vo
       (request.query as Record<string, unknown> | undefined)?.limit,
     );
     return { entries: context.stores.audit.list(parsed.success ? parsed.data : 50) };
+  });
+
+  app.get('/api/audit/export', async (request, reply) => {
+    const query = request.query as Record<string, unknown> | undefined;
+    const format = query?.format === 'csv' ? 'csv' : 'json';
+    const limit = typeof query?.limit === 'string' ? parseInt(query.limit, 10) : 500;
+    const entries = context.stores.audit.list(isNaN(limit) ? 500 : Math.min(limit, 5000));
+
+    if (format === 'csv') {
+      const escapeCsv = (val: unknown) => {
+        if (val === null || val === undefined) return '';
+        const str = String(val);
+        if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+          return `"${str.replace(/"/g, '""')}"`;
+        }
+        return str;
+      };
+
+      const headers = ['id', 'createdAt', 'datetime', 'actorJid', 'action', 'params', 'result'];
+      const rows = entries.map((e) =>
+        [
+          escapeCsv(e.id),
+          escapeCsv(e.createdAt),
+          escapeCsv(new Date(e.createdAt || Date.now()).toISOString()),
+          escapeCsv(e.actorJid ?? 'sistem'),
+          escapeCsv(e.action),
+          escapeCsv(typeof e.params === 'object' && e.params !== null ? JSON.stringify(e.params) : e.params ?? ''),
+          escapeCsv(typeof e.result === 'object' && e.result !== null ? JSON.stringify(e.result) : e.result ?? ''),
+        ].join(','),
+      );
+
+      const csvContent = [headers.join(','), ...rows].join('\n');
+      reply.header('Content-Type', 'text/csv; charset=utf-8');
+      reply.header('Content-Disposition', 'attachment; filename="arkzormd-audit.csv"');
+      return reply.send(csvContent);
+    }
+
+    reply.header('Content-Type', 'application/json');
+    reply.header('Content-Disposition', 'attachment; filename="arkzormd-audit.json"');
+    return {
+      exportedAt: new Date().toISOString(),
+      count: entries.length,
+      entries,
+    };
   });
 
   app.get('/api/settings', async () => ({

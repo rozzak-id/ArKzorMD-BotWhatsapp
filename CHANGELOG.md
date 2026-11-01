@@ -4,6 +4,44 @@ Semua perubahan penting pada proyek **ArKzorMD** akan dicatat dalam berkas ini. 
 
 ---
 
+## [Unreleased] - Milestone M4 & M5 Selesai
+
+### 🌟 Fitur Utama (Highlights)
+
+#### 1. Media AI Multimodal (Milestone M4 · FR-18 & FR-19)
+- **Analisis Gambar Vision Multimodal (FR-18)**: Integrasi penuh pemrosesan gambar multimodal:
+  - Google Gemini API menggunakan format part `inlineData` (base64 + mimeType).
+  - OpenAI-compatible API menggunakan format part `image_url` data URL (`data:<mime>;base64,<data>`).
+  - Bot mampu mengenali dan menjawab pertanyaan seputar foto struk belanja, screenshot, dokumen, atau foto langsung dari chat WhatsApp.
+- **Transkripsi Voice Note Otomatis (FR-19)**: Modul `AudioTranscriber` cerdas dengan dukungan:
+  - OpenAI / Groq Whisper API (`POST /v1/audio/transcriptions` via native `fetch` + `FormData`).
+  - Google Gemini Multimodal Audio (transkripsi akurat rekaman bahasa Indonesia/daerah).
+  - Hasil transkripsi pesan suara secara otomatis disisipkan ke prompt pengguna sehingga persona Jutek merespons pesan suara secara kontekstual.
+- **WhatsApp Media Download Pipeline**: Adapter `onigis` secara otomatis mengunduh buffer media terenkripsi WhatsApp untuk pesan gambar dan rekaman audio (dengan batas aman 10MB per berkas).
+
+#### 2. Ekspor & Impor Data Web UI (Milestone M5 · FR-14 & FR-34)
+- **Ekspor & Impor Persona (FR-14)**:
+  - Endpoint `GET /api/personas/export` (unduh file JSON seluruh persona tersimpan).
+  - Endpoint `POST /api/personas/import` (impor daftar persona dari file JSON).
+  - Tombol aksi "Ekspor JSON" dan "Impor JSON" langsung pada halaman Web UI `PersonasPage`.
+- **Ekspor Audit Log (FR-34)**:
+  - Endpoint `GET /api/audit/export?format=csv` (ekspor log audit berstandar RFC 4180 CSV).
+  - Endpoint `GET /api/audit/export?format=json` (ekspor log audit lengkap format JSON).
+  - Tombol aksi "Ekspor CSV" dan "Ekspor JSON" langsung pada halaman Web UI `AuditPage`.
+
+#### 3. Deployment & Hardening VPS (Milestone M5)
+- **One-Line Installer Script (`install.sh`)**: Skrip instalasi otomatis untuk Linux (Ubuntu/Debian) yang memeriksa OS, memasang Node.js 22 LTS dari NodeSource bila diperlukan, melakukan kompilasi monorepo, membuat konfigurasi `.env`, dan mengonfigurasi `systemd` service (`arkzormd.service`) yang berjalan di background dengan restart otomatis.
+- **Dokumentasi Disclaimer & Keamanan**:
+  - `DISCLAIMER.md`: Peringatan risiko banned WhatsApp, pedoman anti-spam, dan rekomendasi penggunaan nomor khusus.
+  - `SECURITY.md`: Pembaruan status arsitektur keamanan aktif (Web UI auth scryptSync, session token, verifikasi Owner 6-digit challenge code, redaksi secret).
+
+### 🧪 Pengujian & Kualitas
+- **18 Berkas Tes Lulus (98/98 Tes Lolos)** termasuk tes multimodal Gemini inlineData, OpenAI image_url, transkripsi voice note, ekspor-impor persona, dan ekspor CSV audit log.
+- **TypeScript Strict**: `npm run typecheck` lolos dengan 0 error.
+- **Bundle Production**: Kompilasi Vite (Web) dan tsup (Server) berhasil tanpa peringatan error.
+
+---
+
 ## [v0.1.0] - 2026-11-01
 
 Rilis publik pertama **ArKzorMD** (Milestone M0 hingga M3 Selesai). Membawa bot AI WhatsApp hybrid self-hosted lengkap dengan sistem kontrol izin berbasis role, approval interaktif, provider AI ganda, Web UI modern, dan instalasi wizard cepat di bawah 10 menit.
@@ -57,3 +95,4 @@ Rilis publik pertama **ArKzorMD** (Milestone M0 hingga M3 Selesai). Membawa bot 
 - **17 Berkas Tes Lulus (95/95 Tes Lolos)** mencakup unit test resolver, permission matrix, SSRF guard, approval invariants, native flow buttons, context compaction, auth, API integration, dan modular commands.
 - **TypeScript Strict**: `npm run typecheck` lolos dengan 0 error.
 - **Bundle Build**: Sukses terkompilasi untuk web (Vite) dan server (tsup).
+

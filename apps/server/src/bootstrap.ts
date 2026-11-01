@@ -14,6 +14,9 @@ import {
   PermissionEngine,
   RateLimiter,
   ToolRegistry,
+  WhisperAudioTranscriber,
+  GeminiAudioTranscriber,
+  type AudioTranscriber,
   createBuiltinTools,
   createDefaultCommands,
   createLogger,
@@ -123,6 +126,20 @@ export async function createAppContext(config: AppConfig): Promise<AppContext> {
 
   const router = new MessageRouter(config.prefix, commands);
   const provider = createProvider(config, logger);
+
+  let transcriber: AudioTranscriber | undefined;
+  if (config.openaiApiKey) {
+    transcriber = new WhisperAudioTranscriber({
+      apiKey: config.openaiApiKey,
+      baseUrl: config.openaiBaseUrl,
+    });
+  } else if (config.geminiApiKey) {
+    transcriber = new GeminiAudioTranscriber({
+      apiKey: config.geminiApiKey,
+      baseUrl: config.geminiBaseUrl,
+    });
+  }
+
   const agent = new AgentOrchestrator({
     provider,
     adapter,
@@ -130,6 +147,7 @@ export async function createAppContext(config: AppConfig): Promise<AppContext> {
     permissions,
     approvals,
     audit,
+    transcriber,
     botName: config.botNames[0] || 'Arka',
     services: {
       messages: stores.messages,

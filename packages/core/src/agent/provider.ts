@@ -1,11 +1,17 @@
 import type { ToolSchema } from '../types.js';
 
+export interface AiMediaItem {
+  mimeType: string;
+  data: string; // Base64-encoded string
+}
+
 export interface AiMessage {
   role: 'system' | 'user' | 'assistant' | 'tool';
   content: string;
   toolCallId?: string;
   name?: string;
   toolCalls?: AiToolCall[];
+  media?: AiMediaItem[];
 }
 
 export interface AiToolCall {

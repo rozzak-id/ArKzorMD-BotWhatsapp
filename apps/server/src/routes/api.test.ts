@@ -150,5 +150,53 @@ describe('Server API & Auth Routes', () => {
     });
     expect(updateModeRes.statusCode).toBe(200);
     expect(context.stores.chats.get('120363000000000000@g.us')?.mode).toBe('active');
+
+    // 8. Persona export & import
+    const exportPersonaRes = await app.inject({
+      method: 'GET',
+      url: '/api/personas/export',
+    });
+    expect(exportPersonaRes.statusCode).toBe(200);
+    expect(exportPersonaRes.headers['content-type']).toContain('application/json');
+    const exportData = JSON.parse(exportPersonaRes.payload);
+    expect(Array.isArray(exportData.personas)).toBe(true);
+
+    const importPersonaRes = await app.inject({
+      method: 'POST',
+      url: '/api/personas/import',
+      payload: {
+        personas: [
+          {
+            id: 'custom_persona',
+            name: 'Custom Persona',
+            language: 'id',
+            style: 'santai dan ramah',
+            forbiddenTopics: [],
+            typingDelay: 'fast',
+            examples: [],
+          },
+        ],
+      },
+    });
+    expect(importPersonaRes.statusCode).toBe(200);
+    expect(context.stores.personas.get('custom_persona')?.name).toBe('Custom Persona');
+
+    // 9. Audit export (CSV and JSON)
+    const exportAuditCsvRes = await app.inject({
+      method: 'GET',
+      url: '/api/audit/export?format=csv',
+    });
+    expect(exportAuditCsvRes.statusCode).toBe(200);
+    expect(exportAuditCsvRes.headers['content-type']).toContain('text/csv');
+    expect(exportAuditCsvRes.payload).toContain('id,createdAt,datetime,actorJid,action');
+
+    const exportAuditJsonRes = await app.inject({
+      method: 'GET',
+      url: '/api/audit/export?format=json',
+    });
+    expect(exportAuditJsonRes.statusCode).toBe(200);
+    expect(exportAuditJsonRes.headers['content-type']).toContain('application/json');
+    const auditJson = JSON.parse(exportAuditJsonRes.payload);
+    expect(Array.isArray(auditJson.entries)).toBe(true);
   });
 });

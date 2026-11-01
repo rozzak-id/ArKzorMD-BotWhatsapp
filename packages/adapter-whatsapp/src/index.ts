@@ -870,6 +870,40 @@ export class WhatsAppAdapter implements PlatformAdapter {
       }
     }
 
+    // FR-18 & FR-19: Unduh media (gambar / voice note) otomatis untuk multimodal AI
+    if (message.media.length > 0 && this.module && typeof this.module.downloadMediaMessage === 'function') {
+      const MAX_MEDIA_DOWNLOAD_BYTES = 10 * 1024 * 1024; // 10 MB limit
+      for (const item of message.media) {
+        if (
+          (item.kind === 'image' || item.kind === 'audio') &&
+          (!item.sizeBytes || item.sizeBytes <= MAX_MEDIA_DOWNLOAD_BYTES)
+        ) {
+          try {
+            const currentSocket = this.socket;
+            const buf = await this.module.downloadMediaMessage(
+              raw,
+              'buffer',
+              {},
+              {
+                logger: this.options.logger as any,
+                reuploadRequest: (msg: WAMessage) =>
+                  currentSocket ? currentSocket.updateMediaMessage(msg) : Promise.resolve(msg),
+              },
+            );
+            if (Buffer.isBuffer(buf) && buf.length > 0) {
+              item.buffer = buf;
+              item.base64 = buf.toString('base64');
+            }
+          } catch (downloadErr) {
+            this.options.logger.debug(
+              { err: downloadErr, kind: item.kind },
+              'Media pesan tidak dapat diunduh otomatis',
+            );
+          }
+        }
+      }
+    }
+
     this.options.logger.debug(
       {
         chatId: message.chatId,

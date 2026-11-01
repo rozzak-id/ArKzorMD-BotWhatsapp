@@ -154,8 +154,22 @@ function buildContents(messages: AiMessage[]): {
       continue;
     }
 
+    const userParts: Array<Record<string, unknown>> = [];
     if (message.content.trim()) {
-      appendContent(contents, 'user', [{ text: message.content }]);
+      userParts.push({ text: message.content });
+    }
+    for (const item of message.media ?? []) {
+      if (item.data && item.mimeType) {
+        userParts.push({
+          inlineData: {
+            mimeType: item.mimeType,
+            data: item.data,
+          },
+        });
+      }
+    }
+    if (userParts.length > 0) {
+      appendContent(contents, 'user', userParts);
     }
   }
 

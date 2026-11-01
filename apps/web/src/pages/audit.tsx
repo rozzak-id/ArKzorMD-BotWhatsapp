@@ -6,13 +6,29 @@ import { useAsync } from '../hooks';
 export function AuditPage() {
   const { data, error, loading, reload } = useAsync(() => api.audit(100), []);
 
+  const handleExportCsv = () => {
+    window.open('/api/audit/export?format=csv&limit=1000', '_blank');
+  };
+
+  const handleExportJson = () => {
+    window.open('/api/audit/export?format=json&limit=1000', '_blank');
+  };
+
   return (
     <Card
-      title="Audit log"
+      title="Audit Log"
       action={
-        <button class="btn btn-ghost" type="button" onClick={reload}>
-          Muat ulang
-        </button>
+        <div class="row gap-sm">
+          <button class="btn btn-ghost" type="button" onClick={handleExportCsv} title="Unduh CSV log">
+            Ekspor CSV
+          </button>
+          <button class="btn btn-ghost" type="button" onClick={handleExportJson} title="Unduh JSON log">
+            Ekspor JSON
+          </button>
+          <button class="btn btn-ghost" type="button" onClick={reload}>
+            Muat ulang
+          </button>
+        </div>
       }
     >
       <ErrorNote message={error} />
@@ -55,8 +71,8 @@ export function AuditPage() {
           </table>
         </div>
       )}
-      <p class="muted">
-        Rahasia disaring sebelum masuk audit. Ekspor dan retensi log menyusul di P1.
+      <p class="muted" style={{ marginTop: '1.5rem' }}>
+        Rahasia disaring (redacted) secara otomatis sebelum masuk log audit demi keamanan.
       </p>
     </Card>
   );

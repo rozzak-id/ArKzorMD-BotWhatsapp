@@ -35,6 +35,10 @@ export interface MediaAttachment {
   source?: string;
   /** Ukuran byte, bila diketahui. */
   sizeBytes?: number;
+  /** Data base64 payload untuk pemrosesan AI multimodal (FR-18). */
+  base64?: string;
+  /** Buffer in-memory mentah untuk transcoding/upload. */
+  buffer?: Buffer;
 }
 
 export interface QuotedMessage {

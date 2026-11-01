@@ -1,4 +1,5 @@
-import type { AiMessage, AiProvider } from './provider.js';
+import type { AiMediaItem, AiMessage, AiProvider } from './provider.js';
+import type { AudioTranscriber } from './transcriber.js';
 import type {
   InternalMessage,
   Persona,
@@ -35,6 +36,7 @@ export interface AgentDependencies {
   permissions: PermissionEngine;
   approvals: ApprovalEngine;
   audit: AuditLog;
+  transcriber?: AudioTranscriber;
   maxSteps?: number;
   botName?: string;
   botNumber?: string;
@@ -94,10 +96,26 @@ function toAiMessages(
   const roleTag = input.role ? `[${input.role.toUpperCase()}] ` : '';
   const userContent = input.message.text ? `${roleTag}${input.message.text}` : '[pesan media]';
 
+  const mediaItems: AiMediaItem[] = [];
+  for (const m of input.message.media ?? []) {
+    if (m.base64 && m.mimeType) {
+      mediaItems.push({
+        mimeType: m.mimeType,
+        data: m.base64,
+      });
+    }
+  }
+
+  const userMessage: AiMessage = {
+    role: 'user',
+    content: userContent,
+    ...(mediaItems.length > 0 ? { media: mediaItems } : {}),
+  };
+
   return [
     { role: 'system', content: systemPrompt },
     ...history,
-    { role: 'user', content: userContent },
+    userMessage,
   ];
 }
 
@@ -113,6 +131,28 @@ export class AgentOrchestrator {
   }
 
   async run(input: AgentRunInput): Promise<AgentRunResult> {
+    // FR-19: Transkripsi voice note / rekaman audio jika transcriber terpasang
+    if (this.deps.transcriber && input.message.media && input.message.media.length > 0) {
+      for (const m of input.message.media) {
+        if (m.kind === 'audio' && (m.buffer || m.base64)) {
+          try {
+            const audioBuffer = m.buffer ?? Buffer.from(m.base64!, 'base64');
+            const transcript = await this.deps.transcriber.transcribe({
+              buffer: audioBuffer,
+              mimeType: m.mimeType ?? 'audio/ogg',
+              language: input.persona.language === 'en' ? 'en' : 'id',
+            });
+            if (transcript) {
+              const currentText = input.message.text ? `${input.message.text}\n` : '';
+              input.message.text = `${currentText}[Pesan Suara Pengguna]: "${transcript}"`;
+            }
+          } catch {
+            // Biarkan flow berjalan jika transkripsi gagal
+          }
+        }
+      }
+    }
+
     const availableTools = this.deps.tools.listToolsForRole(input.role);
     const messages = toAiMessages(input, availableTools, this.deps.botName, this.deps.botNumber);
     const usedTools: string[] = [];

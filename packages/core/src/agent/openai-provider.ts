@@ -45,6 +45,27 @@ function toOpenAiMessage(message: AiMessage): Record<string, unknown> {
     };
   }
 
+  if (message.role === 'user' && message.media && message.media.length > 0) {
+    const parts: Array<Record<string, unknown>> = [];
+    if (message.content.trim()) {
+      parts.push({ type: 'text', text: message.content });
+    }
+    for (const item of message.media) {
+      if (item.data && item.mimeType) {
+        parts.push({
+          type: 'image_url',
+          image_url: {
+            url: `data:${item.mimeType};base64,${item.data}`,
+          },
+        });
+      }
+    }
+    return {
+      role: 'user',
+      content: parts.length > 0 ? parts : message.content,
+    };
+  }
+
   return {
     role: message.role,
     content: message.content,

@@ -31,29 +31,20 @@ ArKzorMD mengendalikan akun WhatsApp nyata. Aset yang dilindungi:
    disimpan sesuai kebijakan retensi.
 5. **Akun WhatsApp** — rate limit, jitter, dan humanizer menekan risiko pemblokiran.
 
-## Batasan yang diketahui (v0.1)
+## Fitur Keamanan yang Aktif (v0.1+)
 
-- **Auth Web UI belum ada.** Jangan host API/Web UI ke publik. Default bind
-  `127.0.0.1`. Akses publik harus lewat reverse proxy HTTPS dan akan tetap tidak aman
-  sampai login M3 selesai.
-- **Endpoint keputusan approval** memakai `ADMIN_TOKEN` sementara. Jika token kosong,
-  endpoint mengembalikan 503. Gunakan token acak ≥ 16 karakter.
-- **Adapter WhatsApp live memerlukan Linux x64/arm64.** Adapter memakai `onigis`; paket
-  native E2EE tidak tersedia untuk Windows/macOS. Gunakan mode `mock` untuk pengembangan
-  di platform tersebut, dan jangan pakai mock di produksi.
-- **QR pairing adalah kredensial sementara.** Jangan membagikan screenshot QR atau isi
-  folder `data/whatsapp-auth`; keduanya bisa dipakai untuk mengakses akun.
-- **Executor approval belum rehidrasi setelah restart.** Request tetap tersimpan, tetapi
-  eksekusi otomatis setelah restart belum diimplementasikan (M2).
-- **API key masih dibaca dari `.env`.** Provider OpenAI-compatible dan Gemini sudah
-  aktif, tetapi penyimpanan terenkripsi lewat Web UI baru masuk M3. Lindungi file `.env`,
-  batasi akses ke mesin, dan jangan membagikannya.
-- **Isi percakapan dikirim ke penyedia AI yang dipilih.** Gunakan model lokal (misalnya
-  Ollama) bila privasi percakapan menjadi prioritas. Kebijakan retensi dan pemrosesan
-  data mengikuti penyedia masing-masing.
-- **Prompt injection** dimitigasi dengan memisahkan data dan instruksi serta menegakkan
-  izin di kode, tetapi tidak ada jaminan model tidak akan mencoba melewatinya. Keputusan
-  akhir tetap di `PermissionEngine`.
+- **Autentikasi Web UI & Setup Wizard**: Web UI dilindungi kata sandi admin yang di-hash dengan `scryptSync` (parameter N=16384, r=8, p=1) + salt kriptografis acak 16 byte (`node:crypto`). Sesi menggunakan bearer token berbasis session ID bertanda tangan waktu.
+- **Verifikasi Owner Terproteksi**: Verifikasi nomor Owner dilakukan lewat challenge code 6-digit yang dikirim dari nomor WhatsApp Owner ke bot.
+- **Redaksi Rahasia (Secret Scrubbing)**: Token API, password, dan nomor rahasia disaring (`[REDACTED]`) secara otomatis sebelum masuk ke log sistem atau audit log SQLite.
+- **Isolasi Keputusan Izin**: Penegakan level risiko (L0, L1, L2) dan persetujuan aksi L1 sepenuhnya dieksekusi oleh `PermissionEngine` dan `ApprovalEngine` di level kode terisolasi; model AI tidak dapat mem-bypass atau mengesahkan tindakannya sendiri.
+- **SSRF & Network Boundary Guard**: Panggilan keluar (seperti downloader atau fetch media) melewati pemeriksaan alamat IP privat dan loopback untuk mencegah SSRF ke jaringan internal server.
+
+## Batasan dan Rekomendasi Pengoperasian
+
+- **Adapter WhatsApp Live**: Memerlukan lingkungan Linux x64/arm64 karena implementasi kriptografi E2EE `onigis` (libsignal native prebuild). Di sistem Windows/macOS, gunakan container Docker berbasis Linux atau mode `mock` untuk pengujian lokal.
+- **Kredensial Sesi WhatsApp**: Folder `data/whatsapp-auth` menyimpan kunci sesi terenkripsi WhatsApp. Lindungi hak akses direktori ini (`chmod 700`) dan jangan menyalinnya ke media yang tidak aman.
+- **Privasi Penyedia AI**: Percakapan diproses oleh penyedia AI yang dikonfigurasi (OpenAI / Gemini / Ollama lokal). Pilih model self-hosted lokal (seperti Ollama / vLLM) jika memerlukan privasi penuh tanpa lalu lintas keluar server.
+- **Prompt Injection**: Walaupun data percakapan dipisahkan dari instruksi sistem, keputusan eksekusi perintah dan tool WhatsApp selalu dibatasi oleh matriks RBAC dan Approval Engine. AI tidak memiliki hak administratif di luar apa yang diizinkan oleh sistem izin.
 
 ## Praktik aman untuk pengguna
 
