@@ -4,6 +4,38 @@ Semua perubahan penting pada proyek **ArKzorMD** akan dicatat dalam berkas ini. 
 
 ---
 
+## [v0.4.0] - 2026-11-01
+
+### 🌟 Fitur Utama & Penyempurnaan (Highlights)
+
+#### 1. Manajemen API Key & Dukungan Penuh 9Router Local Gateway
+- **Input API Key Langsung di Web UI**: Form konfigurasi API Key kini hadir di halaman Pengaturan dan Setup Wizard (Langkah 2) dengan tombol *show/hide* (ikon mata SVG), verifikasi status kunci tersimpan, dan tombol **Uji Koneksi AI** untuk cek latensi & balasan sebelum disimpan.
+- **Dukungan Resmi 9Router (Local AI Gateway)**: Ditambahkan sebagai opsi provider utama dengan Base URL default `http://localhost:20128/v1` dan model `auto` untuk menjalankan model AI lokal tanpa kuota cloud.
+- **Multi-Provider Terpadu**: Google Gemini, OpenAI, OpenRouter, Ollama lokal, dan Custom OpenAI-compatible endpoint.
+
+#### 2. Persona AI CRUD Lengkap (Buat, Edit, Hapus & Custom Prompts)
+- **Tombol Tambah Persona**: Buat kepribadian bot baru langsung dari Web UI atau saat Setup Wizard Langkah 5.
+- **Fitur Edit Persona**: Ubah nama tampilan, gaya bahasa (tone), bahasa, typing delay, sapaan pembuka (greeting), topik dilarang, dan instruksi sistem tambahan (*custom prompt*) tanpa restart server.
+- **Hapus Persona Kustom**: Persona yang tidak aktif kini dapat dihapus dengan konfirmasi aman.
+- **Responsif Auto-Fill**: Grid kartu persona menggunakan `.grid-cards` responsif sehingga tampilan tetap rapi di layar lebar.
+
+#### 3. Mode Self Control (Owner Kontrol Bot dari Nomor Akun Sendiri)
+- **Dukungan Pesan Self (`key.fromMe`)**: Bot kini dapat membedakan antara balasan otomatis bot (melalui tracking ID pesan keluar) dan pesan yang diketik oleh pemilik akun di WhatsApp.
+- **Perintah dari Akun Sendiri**: Owner dapat mengetik perintah seperti `.menu`, `.ping`, atau chat AI langsung dari WhatsApp di nomor bot tanpa diabaikan.
+- **Toggle Switch**: Setelan *Mode Self Control* dapat diaktifkan atau dinonaktifkan di halaman Pengaturan.
+
+#### 4. Reset Data & Zona Bahaya
+- **Reset Memori Bot**: Menghapus seluruh memori fakta jangka panjang per-user.
+- **Bersihkan Audit Log**: Menghapus rekaman riwayat aktivitas dan audit log.
+- **Factory Reset**: Mengembalikan bot dan status setup ke kondisi awal wizard.
+
+#### 5. Peningkatan Estetika Tampilan & Scrollbar Kustom
+- **Modern Dark-Tech Scrollbar**: Menggantikan scrollbar default Windows yang tebal/kaku dengan scrollbar ramping (6px) bertema gelap dengan rounded thumb dan efek hover emerald.
+- **Dropdown Modern**: Komponen `<select>` dipercantik dengan ikon panah SVG kustom, latar belakang solid, dan padding yang nyaman.
+- **Alur Setup Wizard**: Penataan navigasi langkah yang konsisten dan tombol langsung masuk ke Dashboard Utama di akhir langkah.
+
+---
+
 ## [v0.3.0] - 2026-11-01
 
 ### 🌟 Fitur Utama & Penyempurnaan (Highlights)

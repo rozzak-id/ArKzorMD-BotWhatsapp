@@ -77,7 +77,7 @@ export function DashboardPage({ status }: { status: StatusResponse | null }) {
         badge={
           <div style={{ display: 'inline-flex', gap: '8px', alignItems: 'center' }}>
             <Badge tone="accent" size="sm" icon={<Icons.Sparkles width={12} height={12} />}>
-              v{status?.version ?? '0.3.0'}
+              v{status?.version ?? '0.4.0'}
             </Badge>
             <StatusPill status={status?.connection.status ?? null} />
           </div>
@@ -308,7 +308,7 @@ export function DashboardPage({ status }: { status: StatusResponse | null }) {
         <dl class="kv">
           <div>
             <dt>Versi Rilis</dt>
-            <dd>v{status?.version ?? '0.3.0'}</dd>
+            <dd>v{status?.version ?? '0.4.0'}</dd>
           </div>
           <div>
             <dt>Environment</dt>

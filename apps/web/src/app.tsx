@@ -194,7 +194,7 @@ export function App() {
         </nav>
 
         <div class="sidebar-foot">
-          <p style={{ fontWeight: 600 }}>v{status?.version ?? '0.3.0'}</p>
+          <p style={{ fontWeight: 600 }}>v{status?.version ?? '0.4.0'}</p>
           <p class="muted small">
             AI: <code>{status?.ai.provider ?? 'mock'}</code> ({status?.ai.model ?? 'default'})
           </p>
