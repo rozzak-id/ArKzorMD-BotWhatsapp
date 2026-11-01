@@ -159,3 +159,4 @@ echo -e "${YELLOW}Langkah Selanjutnya:${NC}"
 echo -e "1. Buka browser dan kunjungi: ${CYAN}http://${SERVER_IP}:3000${NC}"
 echo -e "2. Ikuti Setup Wizard (buat password admin, masukkan API key, dan hubungkan WhatsApp via Pairing Code 8-digit)."
 echo -e "================================================================\n"
+

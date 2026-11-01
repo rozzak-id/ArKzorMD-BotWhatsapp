@@ -38,3 +38,4 @@ Pengembang dan kontributor ArKzorMD **tidak bertanggung jawab** atas:
 - Pelanggaran hukum atau regulasi privasi data lokal akibat pesan atau data yang diproses oleh pengguna.
 
 Perangkat lunak ini disediakan *"sebagaimana adanya"* (*AS IS*) tanpa jaminan apa pun, baik tersurat maupun tersirat, sebagaimana dinyatakan dalam lisensi MIT proyek ini.
+
