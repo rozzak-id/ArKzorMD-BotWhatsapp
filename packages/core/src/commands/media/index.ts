@@ -16,6 +16,7 @@ import { bypaslinkCommand } from './bypaslink.js';
 import { toolsCommand } from './tools.js';
 import { channelCommand } from './channel.js';
 import { buttonCommand } from './button.js';
+import { cleanCommand } from './clean.js';
 
 export const mediaCommands: CommandDefinition[] = [
   aiCommand,
@@ -35,5 +36,6 @@ export const mediaCommands: CommandDefinition[] = [
   toolsCommand,
   channelCommand,
   buttonCommand,
+  cleanCommand,
 ];
 

@@ -110,3 +110,4 @@ export { MockAdapter, type ApprovalRecord, type SentRecord } from './testing/moc
 
 export { newId, now, shortCode, sleep } from './utils/id.js';
 export { redact } from './utils/redact.js';
+export { cleanAiMarks, type CleanMarksResult } from './utils/clean-marks.js';
