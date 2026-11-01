@@ -97,6 +97,8 @@ export interface PlatformAdapter {
   getBotJid?(): string | null;
   /** Pesan error koneksi terakhir untuk ditampilkan di Web UI (opsional). */
   getLastError?(): string | null;
+  /** Permintaan 8-digit pairing code untuk nomor telepon tertentu (FR-01). */
+  requestPairingCode?(phoneNumber: string): Promise<string>;
 }
 
 export interface User {

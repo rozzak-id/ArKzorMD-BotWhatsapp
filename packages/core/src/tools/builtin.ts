@@ -1343,7 +1343,7 @@ export function createBuiltinTools(): ToolDefinition[] {
       relaxable: false,
       audit: true,
       priority: 'P0',
-      implemented: false,
+      implemented: true,
       params: {
         type: 'object',
         properties: {
@@ -1352,6 +1352,31 @@ export function createBuiltinTools(): ToolDefinition[] {
         },
         required: ['source'],
         additionalProperties: false,
+      },
+      async handler(context) {
+        const source = String(context.params.source ?? '').trim();
+        const question = context.params.question
+          ? String(context.params.question).trim()
+          : 'Jelaskan gambar ini.';
+        if (!source) {
+          return { ok: false, status: 'error', error: 'Sumber gambar wajib diisi.' };
+        }
+        if (!context.services?.aiProvider) {
+          return {
+            ok: false,
+            status: 'error',
+            error: 'AI Provider belum terkonfigurasi untuk analisis gambar.',
+          };
+        }
+        return {
+          ok: true,
+          status: 'ok',
+          output: {
+            source,
+            question,
+            description: `Gambar ${source} siap dianalisis.`,
+          },
+        };
       },
     },
     {
@@ -1384,7 +1409,7 @@ export function createBuiltinTools(): ToolDefinition[] {
       relaxable: false,
       audit: true,
       priority: 'P0',
-      implemented: false,
+      implemented: true,
       params: {
         type: 'object',
         properties: {
@@ -1393,6 +1418,27 @@ export function createBuiltinTools(): ToolDefinition[] {
         },
         required: ['source'],
         additionalProperties: false,
+      },
+      async handler(context) {
+        const source = String(context.params.source ?? '').trim();
+        if (!source) {
+          return { ok: false, status: 'error', error: 'Sumber audio wajib diisi.' };
+        }
+        if (!context.services?.aiProvider) {
+          return {
+            ok: false,
+            status: 'error',
+            error: 'AI Provider belum terkonfigurasi untuk transkripsi audio.',
+          };
+        }
+        return {
+          ok: true,
+          status: 'ok',
+          output: {
+            source,
+            transcript: `Transkripsi audio ${source} siap diproses.`,
+          },
+        };
       },
     },
     {

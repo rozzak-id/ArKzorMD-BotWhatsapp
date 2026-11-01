@@ -193,7 +193,14 @@ export class Bot {
       content: message.text || '[pesan media]',
     });
 
-    const persona = this.deps.personas.getActive() ?? DEFAULT_PERSONA;
+    const assignedPersonaId = this.deps.personas.getAssignment?.(
+      message.isGroup ? 'group' : 'chat',
+      message.chatId,
+    );
+    const persona =
+      (assignedPersonaId ? this.deps.personas.get(assignedPersonaId) : undefined) ??
+      this.deps.personas.getActive() ??
+      DEFAULT_PERSONA;
     const result = await this.deps.agent.run({
       message,
       role: user.role,

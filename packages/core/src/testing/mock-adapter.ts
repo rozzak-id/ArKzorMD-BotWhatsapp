@@ -64,6 +64,10 @@ export class MockAdapter implements PlatformAdapter {
     return this.status;
   }
 
+  async requestPairingCode(_phoneNumber: string): Promise<string> {
+    return '1234-5678';
+  }
+
   /** Mensimulasikan pesan masuk, lalu menunggu handler selesai. */
   async receive(message: InternalMessage): Promise<void> {
     await this.handler?.(message);

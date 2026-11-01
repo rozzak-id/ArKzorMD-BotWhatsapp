@@ -4,6 +4,7 @@ import fastifyStatic from '@fastify/static';
 import Fastify, { type FastifyInstance } from 'fastify';
 import type { AppContext } from './context.js';
 import { registerApiRoutes } from './routes/api.js';
+import { registerAuthRoutes } from './routes/auth.js';
 import { registerWsRoute } from './routes/ws.js';
 
 export async function buildApp(context: AppContext): Promise<FastifyInstance> {
@@ -14,6 +15,7 @@ export async function buildApp(context: AppContext): Promise<FastifyInstance> {
   });
 
   await registerWsRoute(app, context);
+  registerAuthRoutes(app, context);
   registerApiRoutes(app, context);
 
   const hasWebBuild = existsSync(join(context.config.webDist, 'index.html'));

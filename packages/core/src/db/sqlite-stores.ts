@@ -306,6 +306,29 @@ export class SqlitePersonaStore implements PersonaStore {
     });
     transaction();
   }
+
+  getAssignment(scope: 'chat' | 'group', scopeId: string): string | undefined {
+    const row = this.db
+      .prepare('SELECT persona_id FROM persona_assignments WHERE scope = ? AND scope_id = ?')
+      .get(scope, scopeId) as { persona_id: string } | undefined;
+    return row?.persona_id;
+  }
+
+  setAssignment(scope: 'chat' | 'group', scopeId: string, personaId: string | null): void {
+    if (!personaId) {
+      this.db
+        .prepare('DELETE FROM persona_assignments WHERE scope = ? AND scope_id = ?')
+        .run(scope, scopeId);
+    } else {
+      this.db
+        .prepare(
+          `INSERT INTO persona_assignments (scope, scope_id, persona_id)
+           VALUES (?, ?, ?)
+           ON CONFLICT(scope, scope_id) DO UPDATE SET persona_id = excluded.persona_id`,
+        )
+        .run(scope, scopeId, personaId);
+    }
+  }
 }
 
 export class SqliteChatStore implements ChatStore {

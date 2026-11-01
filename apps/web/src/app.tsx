@@ -12,7 +12,9 @@ import { SettingsPage } from './pages/settings';
 import { ToolsPage } from './pages/tools';
 import { UsersPage } from './pages/users';
 import { MemoryPage } from './pages/memory';
-import { GroupsPage, SetupPage } from './pages/placeholders';
+import { GroupsPage } from './pages/groups';
+import { SetupPage } from './pages/setup';
+import { api } from './api';
 
 type RouteId =
   | 'dashboard'
@@ -79,7 +81,15 @@ function initialTheme(): Theme {
   return matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
 }
 
-function Page({ route, status }: { route: RouteId; status: StatusResponse | null }) {
+function Page({
+  route,
+  status,
+  onNavigate,
+}: {
+  route: RouteId;
+  status: StatusResponse | null;
+  onNavigate?: (to: RouteId) => void;
+}) {
   switch (route) {
     case 'connection':
       return <ConnectionPage status={status} />;
@@ -102,7 +112,7 @@ function Page({ route, status }: { route: RouteId; status: StatusResponse | null
     case 'platforms':
       return <PlatformsPage />;
     case 'setup':
-      return <SetupPage />;
+      return <SetupPage status={status} onFinish={() => onNavigate?.('dashboard')} />;
     default:
       return <DashboardPage status={status} />;
   }
@@ -128,6 +138,15 @@ export function App() {
   useEffect(() => {
     window.scrollTo({ top: 0 });
   }, [route]);
+
+  useEffect(() => {
+    api.authStatus().then((auth) => {
+      if (auth.needsSetup && location.hash !== '#/setup') {
+        window.location.hash = '#/setup';
+        setRoute('setup');
+      }
+    }).catch(() => {});
+  }, []);
 
   return (
     <div class="shell">
@@ -198,7 +217,14 @@ export function App() {
               Tidak dapat menghubungi API: {error}. Pastikan server berjalan di port 3000.
             </div>
           )}
-          <Page route={route} status={status} />
+          <Page
+            route={route}
+            status={status}
+            onNavigate={(to) => {
+              window.location.hash = `#/${to}`;
+              setRoute(to);
+            }}
+          />
         </main>
       </div>
     </div>

@@ -1,8 +1,8 @@
-import { timingSafeEqual } from 'node:crypto';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import type { InternalMessage } from '@arkzormd/core';
 import type { AppContext } from '../context.js';
+import { requireAdmin } from '../auth.js';
 import { APP_VERSION, buildPlatforms, buildStatus } from '../status.js';
 
 const decisionSchema = z.object({
@@ -19,35 +19,6 @@ const devInboundSchema = z.object({
 });
 
 const limitSchema = z.coerce.number().int().min(1).max(500).default(50);
-
-function safeEqual(expected: string, provided: string): boolean {
-  const a = Buffer.from(expected);
-  const b = Buffer.from(provided);
-  return a.length === b.length && timingSafeEqual(a, b);
-}
-
-function requireAdminToken(
-  context: AppContext,
-  request: FastifyRequest,
-  reply: FastifyReply,
-): boolean {
-  if (!context.config.adminToken) {
-    reply.code(503).send({
-      error:
-        'ADMIN_TOKEN belum dikonfigurasi. Set nilai acak minimal 16 karakter di .env ' +
-        'sebelum memakai endpoint keputusan Approval.',
-    });
-    return false;
-  }
-
-  const header = request.headers['x-admin-token'];
-  const token = Array.isArray(header) ? header[0] : header;
-  if (!token || !safeEqual(context.config.adminToken, token)) {
-    reply.code(401).send({ error: 'Token admin tidak valid.' });
-    return false;
-  }
-  return true;
-}
 
 export function registerApiRoutes(app: FastifyInstance, context: AppContext): void {
   app.get('/api/health', async () => ({
@@ -74,7 +45,7 @@ export function registerApiRoutes(app: FastifyInstance, context: AppContext): vo
   });
 
   app.post('/api/approvals/:code/decision', async (request, reply) => {
-    if (!requireAdminToken(context, request, reply)) return reply;
+    if (!requireAdmin(context, request, reply)) return reply;
 
     if (!context.config.ownerJid) {
       return reply.code(409).send({
@@ -144,7 +115,7 @@ export function registerApiRoutes(app: FastifyInstance, context: AppContext): vo
   }));
 
   app.post('/api/settings/kill-switch', async (request, reply) => {
-    if (!requireAdminToken(context, request, reply)) return reply;
+    if (!requireAdmin(context, request, reply)) return reply;
     const body = request.body as { enabled?: boolean } | undefined;
     const enabled = Boolean(body?.enabled);
     context.stores.settings.set('kill_switch', String(enabled));
@@ -169,7 +140,7 @@ export function registerApiRoutes(app: FastifyInstance, context: AppContext): vo
   });
 
   app.delete('/api/memory/:id', async (request, reply) => {
-    if (!requireAdminToken(context, request, reply)) return reply;
+    if (!requireAdmin(context, request, reply)) return reply;
     const params = request.params as { id?: string };
     const id = Number(params.id);
     if (isNaN(id)) return reply.code(400).send({ error: 'ID catatan tidak valid.' });
@@ -178,7 +149,7 @@ export function registerApiRoutes(app: FastifyInstance, context: AppContext): vo
   });
 
   app.post('/api/personas/:id/activate', async (request, reply) => {
-    if (!requireAdminToken(context, request, reply)) return reply;
+    if (!requireAdmin(context, request, reply)) return reply;
     const params = request.params as { id?: string };
     const id = params.id;
     if (!id) return reply.code(400).send({ error: 'ID persona wajib diisi.' });
@@ -187,7 +158,7 @@ export function registerApiRoutes(app: FastifyInstance, context: AppContext): vo
   });
 
   app.post('/api/users/:jid/role', async (request, reply) => {
-    if (!requireAdminToken(context, request, reply)) return reply;
+    if (!requireAdmin(context, request, reply)) return reply;
     const params = request.params as { jid?: string };
     const body = request.body as { role?: string } | undefined;
     const jid = params.jid;
@@ -203,6 +174,64 @@ export function registerApiRoutes(app: FastifyInstance, context: AppContext): vo
       status: existing?.status ?? 'active',
     });
     return { ok: true, jid, role };
+  });
+
+  app.get('/api/groups', async () => {
+    const chats = context.stores.chats.list().filter((c) => c.type === 'group');
+    const groups = chats.map((chat) => ({
+      chatId: chat.id,
+      mode: chat.mode,
+      personaId: context.stores.personas.getAssignment?.('group', chat.id) ?? null,
+      updatedAt: chat.updatedAt,
+    }));
+    return { groups };
+  });
+
+  app.post('/api/groups/:id/mode', async (request, reply) => {
+    if (!requireAdmin(context, request, reply)) return reply;
+    const params = request.params as { id?: string };
+    const body = request.body as { mode?: string } | undefined;
+    const mode = body?.mode;
+    if (!params.id || !['off', 'mention', 'active'].includes(mode ?? '')) {
+      return reply.code(400).send({ error: 'Chat ID dan mode (off|mention|active) wajib diisi.' });
+    }
+    const updated = context.stores.chats.setMode({
+      chatId: params.id,
+      platform: 'whatsapp',
+      type: 'group',
+      mode: mode as any,
+    });
+    return { ok: true, group: updated };
+  });
+
+  app.post('/api/groups/:id/persona', async (request, reply) => {
+    if (!requireAdmin(context, request, reply)) return reply;
+    const params = request.params as { id?: string };
+    const body = request.body as { personaId?: string | null } | undefined;
+    if (!params.id) {
+      return reply.code(400).send({ error: 'Chat ID wajib diisi.' });
+    }
+    context.stores.personas.setAssignment?.('group', params.id, body?.personaId ?? null);
+    return { ok: true, chatId: params.id, personaId: body?.personaId ?? null };
+  });
+
+  app.post('/api/whatsapp/pairing-code', async (request, reply) => {
+    if (!requireAdmin(context, request, reply)) return reply;
+    const body = request.body as { phoneNumber?: string } | undefined;
+    const phone = body?.phoneNumber?.trim();
+    if (!phone) {
+      return reply.code(400).send({ error: 'Nomor telepon wajib diisi.' });
+    }
+    if (!context.adapter.requestPairingCode) {
+      return reply.code(501).send({ error: 'Adapter platform saat ini tidak mendukung pairing code.' });
+    }
+    try {
+      const code = await context.adapter.requestPairingCode(phone);
+      return { ok: true, code };
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error);
+      return reply.code(500).send({ error: `Gagal meminta pairing code: ${msg}` });
+    }
   });
 
   app.post('/api/dev/inbound', async (request, reply) => {

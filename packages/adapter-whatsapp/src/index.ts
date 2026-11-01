@@ -506,6 +506,21 @@ export class WhatsAppAdapter implements PlatformAdapter {
     this.handler = handler;
   }
 
+  async requestPairingCode(phoneNumber: string): Promise<string> {
+    const cleanPhone = phoneNumber.replace(/\D/g, '');
+    if (!cleanPhone) {
+      throw new Error('Nomor telepon tidak valid.');
+    }
+    if (!this.socket) {
+      await this.connect();
+    }
+    const socket = this.socket as unknown as { requestPairingCode?: (phone: string) => Promise<string> };
+    if (typeof socket?.requestPairingCode !== 'function') {
+      throw new Error('Versi onigis saat ini tidak menyediakan fungsi requestPairingCode.');
+    }
+    return socket.requestPairingCode(cleanPhone);
+  }
+
   async send(chatId: string, content: OutgoingContent): Promise<void> {
     const socket = this.requireSocket();
     const quoted = content.replyTo ? this.recent.get(content.replyTo)?.message : undefined;

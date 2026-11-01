@@ -132,3 +132,18 @@ export interface SettingsResponse {
   aiTimeoutMs: number;
   whatsappMode: string;
 }
+
+export interface GroupChat {
+  chatId: string;
+  mode: 'off' | 'mention' | 'active';
+  personaId: string | null;
+  updatedAt: number;
+}
+
+export interface AuthStatusResponse {
+  needsSetup: boolean;
+  setupCompleted: boolean;
+  authenticated: boolean;
+  hasOwner: boolean;
+  ownerJid: string | null;
+}

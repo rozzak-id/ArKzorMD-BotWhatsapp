@@ -60,6 +60,8 @@ export interface PersonaStore {
   getActive(): Persona | undefined;
   upsert(persona: Persona): Persona;
   activate(id: string): void;
+  getAssignment?(scope: 'chat' | 'group', scopeId: string): string | undefined;
+  setAssignment?(scope: 'chat' | 'group', scopeId: string, personaId: string | null): void;
 }
 
 export interface ApprovalStore {
