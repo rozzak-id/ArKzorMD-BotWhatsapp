@@ -60,7 +60,15 @@ export {
   type CommandServices,
 } from './router/command-registry.js';
 export { MessageRouter, type RouteResult } from './router/router.js';
-export { createDefaultCommands } from './router/commands.js';
+export {
+  createDefaultCommands,
+  getAllCommands,
+  coreCommands,
+  groupCommands,
+  csCommands,
+  mediaCommands,
+  optionalCommands,
+} from './router/commands.js';
 
 export { ToolRegistry, executeTool } from './tools/registry.js';
 export { createBuiltinTools, normalizeTarget } from './tools/builtin.js';

@@ -394,11 +394,18 @@ export class Bot {
       personas: deps.personas,
       messages: deps.messages,
       settings: deps.settings,
+      chats: deps.chats,
+      config: {
+        ownerJid: deps.config.ownerJid,
+        prefix: deps.config.commandPrefix,
+        botNames: deps.config.botNames,
+      },
       audit: deps.audit,
       menuFor: (role: Role) =>
         deps.commands.listFor(role).map((command) => ({
           name: command.name,
           description: command.description,
+          category: command.category,
         })),
       getStatus: () => ({
         uptimeSec: Math.floor((Date.now() - this.startedAt) / 1000),

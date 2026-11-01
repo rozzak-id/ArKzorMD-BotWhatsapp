@@ -1,5 +1,5 @@
 import type { InternalMessage, PlatformAdapter, Role } from '../types.js';
-import type { MessageStore, PersonaStore, SettingsStore, UserStore } from '../stores.js';
+import type { ChatStore, MessageStore, PersonaStore, SettingsStore, UserStore } from '../stores.js';
 import type { AuditLog } from '../audit/audit-log.js';
 import type { ConnectionStatus } from '../types.js';
 import type { DecideInput, DecideResult } from '../security/approval-engine.js';
@@ -18,8 +18,10 @@ export interface CommandServices {
   personas: PersonaStore;
   messages: MessageStore;
   settings: SettingsStore;
+  chats?: ChatStore;
+  config?: { ownerJid?: string | null; prefix?: string; botNames?: string[] };
   audit: AuditLog;
-  menuFor(role: Role): Array<{ name: string; description: string }>;
+  menuFor(role: Role): Array<{ name: string; description: string; category?: string }>;
   getStatus(): CommandRuntimeStatus;
   setKillSwitch(enabled: boolean): void;
   decideApproval(input: DecideInput): Promise<DecideResult>;
@@ -39,18 +41,31 @@ export interface CommandDefinition {
   name: string;
   description: string;
   roles: Role[];
+  aliases?: string[];
+  category?: string;
   handler: CommandHandler;
 }
 
 export class CommandRegistry {
   private readonly commands = new Map<string, CommandDefinition>();
+  private readonly aliasMap = new Map<string, CommandDefinition>();
 
   register(definition: CommandDefinition): void {
     const name = definition.name.toLowerCase().replace(/^\./, '');
     if (this.commands.has(name)) {
       throw new Error(`Command .${name} sudah terdaftar.`);
     }
-    this.commands.set(name, { ...definition, name });
+    const def = { ...definition, name };
+    this.commands.set(name, def);
+
+    if (definition.aliases) {
+      for (const alias of definition.aliases) {
+        const clean = alias.toLowerCase().replace(/^\./, '');
+        if (!this.commands.has(clean) && !this.aliasMap.has(clean)) {
+          this.aliasMap.set(clean, def);
+        }
+      }
+    }
   }
 
   registerAll(definitions: CommandDefinition[]): void {
@@ -58,7 +73,8 @@ export class CommandRegistry {
   }
 
   get(name: string): CommandDefinition | undefined {
-    return this.commands.get(name.toLowerCase());
+    const clean = name.toLowerCase().replace(/^\./, '');
+    return this.commands.get(clean) ?? this.aliasMap.get(clean);
   }
 
   list(): CommandDefinition[] {
