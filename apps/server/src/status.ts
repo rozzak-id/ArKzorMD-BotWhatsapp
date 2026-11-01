@@ -1,7 +1,7 @@
 import type { ConnectionStatus } from '@arkzormd/core';
 import type { AppContext } from './context.js';
 
-export const APP_VERSION = '0.2.0';
+export const APP_VERSION = '0.3.0';
 
 export interface StatusResponse {
   app: string;

@@ -64,3 +64,4 @@ Prioritize decisions strictly in this order:
 - **Surface Depth**: Subtle glassmorphism (`backdrop-filter: blur(12px)`), hairline borders (`rgba(255,255,255,0.08)` in dark mode), radial background ambient glow.
 - **Typography**: Monospace tabular numbers (`font-variant-numeric: tabular-nums`) for telemetry and metrics; tight tracking (`letter-spacing: -0.02em`) on headings.
 - **Micro-Interactions**: Smooth 150ms transitions (`cubic-bezier(0.16, 1, 0.3, 1)`), tactile button active presses (`transform: translateY(1px)`).
+

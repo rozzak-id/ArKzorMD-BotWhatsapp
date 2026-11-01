@@ -4,6 +4,33 @@ Semua perubahan penting pada proyek **ArKzorMD** akan dicatat dalam berkas ini. 
 
 ---
 
+## [v0.3.0] - 2026-11-01
+
+### 🌟 Fitur Utama & Penyempurnaan (Highlights)
+
+#### 1. Redesain Web UI (XIAS & `ux-ui-agent-skills`)
+- **DTCG Token Engine (3-Tier)**: Skala warna Slate cyber, aksen Emerald pulse, Cyan glow, dan kepatuhan kontras WCAG 2.2 AA–AAA.
+- **Estetika Modern Dark-Tech**: Elevated glassmorphism cards, micro-borders, asymmetric telemetry cards, dan layout command console berstandar Linear/Vercel.
+- **Sistem Ikon Vector SVG Murni (Zero-Emoji Policy)**: Menggantikan seluruh emoji unicode di UI dengan komponen SVG tajam (`Icons.WhatsApp`, `Icons.Robot`, `Icons.Activity`, `Icons.ShieldCheck`, `Icons.Cpu`, `Icons.Tools`, `Icons.Sun`, `Icons.Moon`, dll).
+- **Indikator Live Radar Ping**: Animasi pulsing dot `@keyframes ping` pada status koneksi WhatsApp dan metrik uptime.
+- **Interactive Command & Control**:
+  - Tombol aksi cepat Approval L1 (*Approve* / *Reject*) langsung pada Hero Console Dashboard.
+  - Emergency Kill Switch toggle switch langsung pada halaman Tools.
+  - Live filter pencarian memori & konfirmasi hapus interaktif.
+  - Form per-group persona override & selector mode respons grup interaktif.
+
+#### 2. Perbaikan WhatsApp QR & Pairing Code State Machine
+- **Eliminasi Race Condition**: Menangani kesiapan socket dan pembaruan kredensial Baileys sehingga QR code tidak hilang mendadak dan proses pairing code 8-digit selalu berhasil di-*generate*.
+- **Endpoint Pemicu Manual**:
+  - `POST /api/connection/whatsapp/qr`: Inisialisasi atau paksa regenerasi QR code baru.
+  - `POST /api/connection/whatsapp/pair`: Minta kode pairing WhatsApp secara eksplisit dengan nomor telepon.
+- **Konektivitas Handshake Stabil**: Menjaga listener `connection.update` dan `creds.update` tetap sinkron dengan status server.
+
+#### 3. Registrasi Skill & Dokumentasi Desain
+- Terdaftarnya skill agent `.agents/skills/ux-ui-agent-skills/` lengkap dengan referensi `tokens.md` dan checklist `anti-slop.md`.
+
+---
+
 ## [v0.2.0] - 2026-11-01
 
 ### 🌟 Fitur Utama (Highlights)
