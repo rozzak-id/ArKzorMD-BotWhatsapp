@@ -4,6 +4,33 @@ Semua perubahan penting pada proyek **ArKzorMD** akan dicatat dalam berkas ini. 
 
 ---
 
+## [v0.7.0] - 2026-11-01
+
+### Fitur Utama dan Penyempurnaan
+
+#### 1. Sesi Admin Persisten di SQLite
+- **Persistent Session Storage**: Sesi login admin kini disimpan di tabel settings database SQLite `session:<token>`, menggantikan penyimpanan memori RAM sementara.
+- **Tahan Restart Server**: Proses restart bot, reboot sistem, atau pembaruan kode tidak lagi menghapus sesi login admin. Token sesi tetap valid selama 7 hari.
+- **Pemberantasan Error 401**: Menyelesaikan tuntas kendala error "Sesi kedaluwarsa atau token admin tidak valid" saat Hapus Data, Putuskan Sambungan, dan Simpan Pengaturan.
+
+#### 2. Modal Login Admin Otomatis dan Kontrol Sesi Web UI
+- **Admin Login Modal**: Dialog login modern yang otomatis terbuka saat sesi kedaluwarsa atau terjadi respon HTTP 401 unauthorized.
+- **Topbar Auth Control**: Indikator status login pada header atas dengan tombol "Admin Terverifikasi / Keluar" atau tombol "Masuk Admin". Pengguna dapat masuk dan keluar kapan saja tanpa perlu mengulang setup wizard.
+
+#### 3. Mode Manual dan Opsi Lewati AI
+- **Tombol Lewati AI pada Setup Wizard**: Langkah 2 Setup Wizard kini menyediakan tombol "Lewati AI: Mode Manual" untuk pengguna yang ingin mengoperasikan bot tanpa integrasi LLM atau tanpa API Key.
+- **Pemisahan Perintah dan Percakapan**: Saat Mode Manual aktif, seluruh perintah manual seperti `.menu`, `.ping`, `.sticker`, `.toimg`, dan lainnya tetap merespon normal, sedangkan obrolan biasa diabaikan tanpa mengirim pesan mock atau spam.
+- **Toggle Kontrol di Pengaturan**: Dropdown penyedia AI menyediakan opsi "Mode Manual: Tanpa AI, Hanya Perintah" serta switch "Aktifkan Respon Obrolan AI" yang dapat diubah secara instan.
+
+#### 4. Perbaikan dan Polishing AI Chat Playground
+- **Penanganan Autentikasi Anggun**: Deteksi otomatis status sesi admin saat pengujian chat, langsung memicu modal login bila diperlukan.
+- **Pembersihan Teks Kurung**: Dropdown selector persona diubah menjadi format rapi `{nama} - {id} · Aktif`, preset prompt dan placeholder textarea dibersihkan dari seluruh tanda kurung.
+
+#### 5. Kepatuhan Total Zero-Emoji dan Bebas Tanda Kurung
+- Pembersihan menyeluruh tanda kurung dan emoji pada seluruh pesan balasan, validasi error, deskripsi provider 9Router dan Ollama, serta dokumen rilis.
+
+---
+
 ## [v0.6.0] - 2026-11-01
 
 ### Fitur Utama & Penyempurnaan (Highlights)

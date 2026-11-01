@@ -460,7 +460,7 @@ export function registerApiRoutes(app: FastifyInstance, context: AppContext): vo
           return reply.code(400).send({ ok: false, error: 'API key Gemini wajib diisi untuk mengambil daftar model.' });
         }
         const url = `https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(apiKey)}`;
-        const res = await fetch(url, { headers: { 'User-Agent': 'ArKzorMD/0.6.0' } });
+        const res = await fetch(url, { headers: { 'User-Agent': `ArKzorMD/${APP_VERSION}` } });
         if (!res.ok) {
           const text = await res.text();
           throw new Error(`Gemini API error (${res.status}): ${text.slice(0, 150)}`);
@@ -476,7 +476,7 @@ export function registerApiRoutes(app: FastifyInstance, context: AppContext): vo
         const cleanBase = baseUrl.replace(/\/+$/, '');
         const modelsUrl = cleanBase.endsWith('/v1') ? `${cleanBase}/models` : `${cleanBase}/v1/models`;
         const headers: Record<string, string> = {
-          'User-Agent': 'ArKzorMD/0.6.0',
+          'User-Agent': `ArKzorMD/${APP_VERSION}`,
         };
         if (apiKey) {
           headers['Authorization'] = `Bearer ${apiKey}`;
