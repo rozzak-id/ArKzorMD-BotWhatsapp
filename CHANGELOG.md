@@ -4,7 +4,7 @@ Semua perubahan penting pada proyek **ArKzorMD** akan dicatat dalam berkas ini. 
 
 ---
 
-## [Unreleased] - Milestone M4 & M5 Selesai
+## [v0.2.0] - 2026-11-01
 
 ### 🌟 Fitur Utama (Highlights)
 
@@ -18,6 +18,9 @@ Semua perubahan penting pada proyek **ArKzorMD** akan dicatat dalam berkas ini. 
   - Google Gemini Multimodal Audio (transkripsi akurat rekaman bahasa Indonesia/daerah).
   - Hasil transkripsi pesan suara secara otomatis disisipkan ke prompt pengguna sehingga persona Jutek merespons pesan suara secara kontekstual.
 - **WhatsApp Media Download Pipeline**: Adapter `onigis` secara otomatis mengunduh buffer media terenkripsi WhatsApp untuk pesan gambar dan rekaman audio (dengan batas aman 10MB per berkas).
+- **Pembersih Watermark AI & Karakter Tersembunyi (Skill & Command .clean)**:
+  - Integrasi skill agent `remove-ai-marks` (`.agents/skills/remove-ai-marks/`).
+  - Command WhatsApp baru `.clean` (`.unmark`, `.antidetect`) untuk membersihkan zero-width space, bidi controls, tag characters, dan normalisasi kanonik NFKC dari teks AI.
 
 #### 2. Ekspor & Impor Data Web UI (Milestone M5 · FR-14 & FR-34)
 - **Ekspor & Impor Persona (FR-14)**:
