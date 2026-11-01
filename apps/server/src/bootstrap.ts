@@ -40,7 +40,7 @@ export function createDynamicAiProvider(options: {
   timeoutMs?: number;
   logger?: any;
 }): AiProvider {
-  if (options.provider === 'mock') return new MockProvider();
+  if (options.provider === 'none' || options.provider === 'mock') return new MockProvider();
 
   if (options.provider === 'gemini') {
     return new GeminiProvider({

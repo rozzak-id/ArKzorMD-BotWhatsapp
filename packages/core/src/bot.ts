@@ -271,6 +271,13 @@ export class Bot {
       return { replies, ignored: 'group-mode' };
     }
 
+    // Jika AI dinonaktifkan atau provider none (mode manual), abaikan percakapan biasa
+    const aiEnabled = this.deps.settings.getBoolean('ai_enabled', true);
+    const aiProvider = this.deps.settings.get('ai_provider') || this.deps.aiProviderId;
+    if (!aiEnabled || aiProvider === 'none') {
+      return { replies, ignored: 'ai-disabled' };
+    }
+
     const history = this.deps.messages.recent(message.chatId, 20);
     this.deps.messages.append({
       chatId: message.chatId,

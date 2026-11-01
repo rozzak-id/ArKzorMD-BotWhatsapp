@@ -7,6 +7,7 @@ export function SettingsPage() {
   const { data, error, loading, reload } = useAsync(() => api.settings(), []);
 
   // AI Configuration State
+  const [aiEnabled, setAiEnabled] = useState<boolean>(true);
   const [aiProvider, setAiProvider] = useState<string>('gemini');
   const [aiModel, setAiModel] = useState<string>('gemini-2.5-flash');
   const [aiBaseUrl, setAiBaseUrl] = useState<string>('');
@@ -35,6 +36,7 @@ export function SettingsPage() {
   // Sync state from server on load
   useEffect(() => {
     if (data) {
+      setAiEnabled(data.aiEnabled !== false && data.aiProvider !== 'none');
       setAiProvider(data.aiProvider || 'gemini');
       setAiModel(data.aiModel || 'gemini-2.5-flash');
       setAiBaseUrl(data.aiBaseUrl || '');
@@ -51,7 +53,11 @@ export function SettingsPage() {
     setAiProvider(newProvider);
     setTestResult(null);
     setFetchedModels([]);
-    if (newProvider === '9router') {
+    if (newProvider === 'none') {
+      setAiBaseUrl('');
+      setAiModel('manual');
+      setAiEnabled(false);
+    } else if (newProvider === '9router') {
       setAiBaseUrl('http://localhost:20128/v1');
       setAiModel('auto');
     } else if (newProvider === 'gemini') {
@@ -120,6 +126,7 @@ export function SettingsPage() {
     setSuccessNote(null);
     try {
       await api.updateSettings({
+        aiEnabled: aiEnabled && aiProvider !== 'none',
         aiProvider,
         aiModel,
         aiBaseUrl: aiBaseUrl.trim() || undefined,
@@ -209,6 +216,7 @@ export function SettingsPage() {
                   value={aiProvider}
                   onChange={(e) => handleProviderChange((e.target as HTMLSelectElement).value)}
                 >
+                  <option value="none">Mode Manual: Tanpa AI, Hanya Perintah</option>
                   <option value="9router">9Router Local AI Gateway</option>
                   <option value="gemini">Google Gemini</option>
                   <option value="openai">OpenAI Resmi</option>
@@ -218,6 +226,7 @@ export function SettingsPage() {
                   <option value="mock">Mode Mock</option>
                 </select>
                 <span class="form-hint">
+                  {aiProvider === 'none' && 'Mode manual: bot hanya melayani perintah awalan titik tanpa menggunakan AI.'}
                   {aiProvider === '9router' && 'Terhubung ke 9Router gateway lokal Anda. OpenAI-compatible di port 20128.'}
                   {aiProvider === 'gemini' && 'Model resmi Google Generative AI dengan dukungan multimodal & audio.'}
                   {aiProvider === 'openai' && 'Endpoint standar OpenAI. Membutuhkan API Key dari platform.openai.com.'}
@@ -331,7 +340,7 @@ export function SettingsPage() {
                       style={{ width: '100%', paddingRight: '44px' }}
                       value={aiApiKey}
                       onInput={(e) => setAiApiKey((e.target as HTMLInputElement).value)}
-                      placeholder={data?.hasApiKey ? '•••••••••••••••••••••••• (Ketik baru untuk ganti)' : 'Tempelkan API Key di sini'}
+                      placeholder={data?.hasApiKey ? '•••••••••••••••••••••••• - Ketik baru untuk ganti' : 'Tempelkan API Key di sini'}
                     />
                   ) : (
                     <input
@@ -340,7 +349,7 @@ export function SettingsPage() {
                       style={{ width: '100%', paddingRight: '44px' }}
                       value={aiApiKey}
                       onInput={(e) => setAiApiKey((e.target as HTMLInputElement).value)}
-                      placeholder={data?.hasApiKey ? '•••••••••••••••••••••••• (Ketik baru untuk ganti)' : 'Tempelkan API Key di sini'}
+                      placeholder={data?.hasApiKey ? '•••••••••••••••••••••••• - Ketik baru untuk ganti' : 'Tempelkan API Key di sini'}
                     />
                   )}
                   <button
@@ -355,10 +364,26 @@ export function SettingsPage() {
                 </div>
                 <span class="form-hint">
                   {aiProvider === '9router' || aiProvider === 'ollama'
-                    ? 'Opsional untuk 9Router / Ollama lokal (bila tidak memakai token dashboard).'
+                    ? 'Opsional untuk 9Router atau Ollama lokal jika tidak memakai token dashboard.'
                     : 'Disimpan secara terenkripsi di server lokal SQLite.'}
                 </span>
               </div>
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', background: 'var(--surface-subtle)', borderRadius: '6px', border: '1px solid var(--border)' }}>
+              <div>
+                <strong style={{ fontSize: '13px' }}>Aktifkan Respon Obrolan AI</strong>
+                <p class="muted small" style={{ margin: '2px 0 0' }}>
+                  Jika dimatikan, bot beroperasi dalam Mode Manual: hanya merespon perintah awalan titik seperti .menu, .ping, .sticker dan mengabaikan obrolan biasa.
+                </p>
+              </div>
+              <input
+                type="checkbox"
+                checked={aiEnabled && aiProvider !== 'none'}
+                onChange={(e) => setAiEnabled((e.target as HTMLInputElement).checked)}
+                disabled={savingAi || aiProvider === 'none'}
+                style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+              />
             </div>
 
             {/* Test result feedback */}

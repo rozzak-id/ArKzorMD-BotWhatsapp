@@ -274,6 +274,7 @@ export function registerApiRoutes(app: FastifyInstance, context: AppContext): vo
 
   app.get('/api/settings', async () => {
     const aiProvider = context.stores.settings.get('ai_provider') || context.config.aiProvider;
+    const aiEnabled = context.stores.settings.getBoolean('ai_enabled', aiProvider !== 'none' && aiProvider !== 'mock');
     const aiModel = context.stores.settings.get('ai_model') || context.config.aiModel;
     const aiBaseUrl = context.stores.settings.get('ai_base_url') || (aiProvider === 'gemini' ? context.config.geminiBaseUrl : context.config.openaiBaseUrl);
     const selfControl = context.stores.settings.getBoolean('self_control', true);
@@ -292,6 +293,7 @@ export function registerApiRoutes(app: FastifyInstance, context: AppContext): vo
       killSwitch: context.stores.settings.getBoolean('kill_switch'),
       selfControl,
       rateLimitPerMinute: context.stores.settings.getNumber('rate_limit_per_minute', 12),
+      aiEnabled,
       aiProvider,
       aiModel,
       aiBaseUrl,
@@ -333,10 +335,16 @@ export function registerApiRoutes(app: FastifyInstance, context: AppContext): vo
       context.stores.settings.set('auto_read', String(body.autoRead));
       (context.adapter as any)?.setAutoRead?.(body.autoRead);
     }
+    if (typeof body.aiEnabled === 'boolean') {
+      context.stores.settings.set('ai_enabled', String(body.aiEnabled));
+    }
 
     let reloadAi = false;
     if (typeof body.aiProvider === 'string') {
       context.stores.settings.set('ai_provider', body.aiProvider);
+      if (body.aiProvider === 'none') {
+        context.stores.settings.set('ai_enabled', 'false');
+      }
       reloadAi = true;
     }
     if (typeof body.aiModel === 'string' && body.aiModel) {
@@ -347,32 +355,36 @@ export function registerApiRoutes(app: FastifyInstance, context: AppContext): vo
       context.stores.settings.set('ai_base_url', body.aiBaseUrl);
       reloadAi = true;
     }
-    if (typeof body.aiApiKey === 'string' && body.aiApiKey.trim()) {
+    if (typeof body.aiApiKey === 'string') {
       context.stores.settings.set('ai_api_key', body.aiApiKey.trim());
       reloadAi = true;
     }
 
     if (reloadAi) {
       const provider = context.stores.settings.get('ai_provider') || context.config.aiProvider;
-      const model = context.stores.settings.get('ai_model') || context.config.aiModel;
-      const baseUrl = context.stores.settings.get('ai_base_url') || undefined;
-      const apiKey = context.stores.settings.get('ai_api_key') ||
-        (provider === 'gemini' ? context.config.geminiApiKey : context.config.openaiApiKey);
+      if (provider === 'none') {
+        context.aiProviderId = 'none';
+      } else {
+        const model = context.stores.settings.get('ai_model') || context.config.aiModel;
+        const baseUrl = context.stores.settings.get('ai_base_url') || undefined;
+        const apiKey = context.stores.settings.get('ai_api_key') ||
+          (provider === 'gemini' ? context.config.geminiApiKey : context.config.openaiApiKey);
 
-      try {
-        const newProvider = createDynamicAiProvider({
-          provider,
-          model,
-          baseUrl,
-          apiKey,
-          fallbackModel: context.config.aiFallbackModel,
-          timeoutMs: context.config.aiTimeoutMs,
-          logger: context.logger,
-        });
-        context.bot.updateAiProvider(newProvider);
-        context.aiProviderId = newProvider.id;
-      } catch (err) {
-        context.logger.error({ err }, 'Gagal reload AI provider');
+        try {
+          const newProvider = createDynamicAiProvider({
+            provider,
+            model,
+            baseUrl,
+            apiKey,
+            fallbackModel: context.config.aiFallbackModel,
+            timeoutMs: context.config.aiTimeoutMs,
+            logger: context.logger,
+          });
+          context.bot.updateAiProvider(newProvider);
+          context.aiProviderId = newProvider.id;
+        } catch (err) {
+          context.logger.error({ err }, 'Gagal reload AI provider');
+        }
       }
     }
 

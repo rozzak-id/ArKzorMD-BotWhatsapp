@@ -127,6 +127,7 @@ export interface SettingsResponse {
   killSwitch: boolean;
   selfControl?: boolean;
   rateLimitPerMinute: number;
+  aiEnabled?: boolean;
   aiProvider: string;
   aiModel: string;
   aiBaseUrl?: string;

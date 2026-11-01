@@ -377,4 +377,26 @@ describe('Bot pipeline (mock end-to-end)', () => {
     expect(res.text).toContain('Gagal memproses respon AI');
     expect(res.text).toContain('API Key quota exhausted');
   });
+
+  it('mengabaikan chat percakapan biasa dan tetap menjalankan perintah saat mode manual atau ai dinonaktifkan', async () => {
+    const harness = createHarness();
+    cleanup = () => {
+      harness.bot.stop();
+      harness.db.close();
+    };
+    await harness.adapter.connect();
+    harness.bot.start();
+
+    // Set mode manual (AI dinonaktifkan)
+    harness.stores.settings.set('ai_enabled', 'false');
+
+    // Pesan biasa (tanpa prefix) harus diabaikan, tidak ada balasan mock spam
+    await harness.adapter.receive(message({ text: 'aku tadi di jalan' }));
+    expect(harness.adapter.sent).toHaveLength(0);
+
+    // Perintah manual dengan prefix . tetap berjalan normal
+    await harness.adapter.receive(message({ text: '.ping' }));
+    expect(harness.adapter.sent).toHaveLength(1);
+    expect(harness.adapter.sent[0]?.content.text).toContain('Pong!');
+  });
 });

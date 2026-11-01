@@ -109,7 +109,11 @@ export function SetupPage({ status, onFinish }: SetupPageProps) {
   const handleProviderSelect = (provider: string) => {
     setAiProvider(provider);
     setTestResult(null);
-    if (provider === '9router') {
+    if (provider === 'none') {
+      setAiBaseUrl('');
+      setAiModel('manual');
+      setAiApiKey('');
+    } else if (provider === '9router') {
       setAiBaseUrl('http://localhost:20128/v1');
       setAiModel('auto');
     } else if (provider === 'gemini') {
@@ -208,6 +212,24 @@ export function SetupPage({ status, onFinish }: SetupPageProps) {
         aiApiKey: aiApiKey.trim() || undefined,
       });
       setSuccessNote('Konfigurasi AI berhasil disimpan!');
+      setStep(3);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleSkipAiStep2() {
+    setLoading(true);
+    setError(null);
+    try {
+      await api.updateSettings({
+        aiProvider: 'none',
+        aiEnabled: false,
+      });
+      setAiProvider('none');
+      setSuccessNote('AI dilewati. Bot akan beroperasi dalam mode manual perintah.');
       setStep(3);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -483,6 +505,7 @@ export function SetupPage({ status, onFinish }: SetupPageProps) {
                     { id: 'openai', label: 'OpenAI' },
                     { id: 'openrouter', label: 'OpenRouter' },
                     { id: 'ollama', label: 'Ollama' },
+                    { id: 'none', label: 'Lewati AI' },
                   ].map((p) => (
                     <button
                       key={p.id}
@@ -505,10 +528,12 @@ export function SetupPage({ status, onFinish }: SetupPageProps) {
                   <option value="openai">OpenAI</option>
                   <option value="openrouter">OpenRouter</option>
                   <option value="ollama">Ollama</option>
+                  <option value="none">Mode Manual: Tanpa AI, Hanya Perintah</option>
                   <option value="custom">Custom API</option>
                   <option value="mock">Mock Provider</option>
                 </select>
                 <span class="form-hint">
+                  {aiProvider === 'none' && 'Mode manual: bot hanya merespon perintah awalan titik dan mengabaikan chat biasa.'}
                   {aiProvider === '9router' && 'Gunakan 9Router local gateway port 20128. Tanpa kuota cloud.'}
                   {aiProvider === 'gemini' && 'Resmi Google Gemini. Sangat disarankan untuk multimodal WhatsApp.'}
                   {aiProvider === 'openai' && 'Model GPT-4o resmi dari OpenAI platform.'}
@@ -627,8 +652,18 @@ export function SetupPage({ status, onFinish }: SetupPageProps) {
                 <button
                   type="button"
                   class="btn btn-secondary"
+                  style={{ borderColor: 'var(--accent)', color: 'var(--accent)' }}
+                  onClick={handleSkipAiStep2}
+                  disabled={loading}
+                  title="Lewati konfigurasi AI dan gunakan bot untuk perintah manual"
+                >
+                  <span>Lewati AI: Mode Manual →</span>
+                </button>
+                <button
+                  type="button"
+                  class="btn btn-secondary"
                   onClick={handleTestAiStep2}
-                  disabled={testingAi || loading}
+                  disabled={testingAi || loading || aiProvider === 'none'}
                 >
                   <Icons.Activity width={14} height={14} />
                   <span>{testingAi ? 'Menguji…' : 'Uji Koneksi AI'}</span>
