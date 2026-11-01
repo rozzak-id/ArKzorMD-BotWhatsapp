@@ -13,6 +13,7 @@ export interface CommandRuntimeStatus {
 }
 
 export interface CommandServices {
+  [key: string]: any;
   adapter: PlatformAdapter;
   users: UserStore;
   personas: PersonaStore;

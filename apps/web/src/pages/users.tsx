@@ -196,69 +196,71 @@ export function UsersPage() {
 
       {/* Modal Tambah Pengguna */}
       {showAddModal && (
-        <div class="modal-backdrop" onClick={() => setShowAddModal(false)}>
-          <div class="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '440px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <div class="modal-backdrop" onClick={() => !submitting && setShowAddModal(false)}>
+          <div class="modal-card" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '440px' }}>
+            <header class="modal-head">
+              <h2 style={{ margin: 0, fontSize: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <Icons.UserCheck width={18} height={18} />
-                <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 600 }}>Tambah Pengguna Manual</h3>
-              </div>
+                <span>Tambah Pengguna Manual</span>
+              </h2>
               <button
                 type="button"
                 class="btn btn-secondary btn-sm"
-                style={{ padding: '4px 8px' }}
                 onClick={() => setShowAddModal(false)}
+                disabled={submitting}
               >
                 <Icons.X width={14} height={14} />
               </button>
-            </div>
+            </header>
 
-            <form onSubmit={handleAddUser} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-              <div class="form-group">
-                <label class="form-label">
-                  <span>Nomor Telepon WhatsApp / JID</span>
-                </label>
-                <input
-                  type="text"
-                  class="input"
-                  placeholder="Contoh: 08123456789 atau 628123456789"
-                  value={newPhone}
-                  onInput={(e) => setNewPhone((e.target as HTMLInputElement).value)}
-                  required
-                  autoFocus
-                />
-                <span class="form-hint">Otomatis diformat menjadi JID WhatsApp resmi (@s.whatsapp.net).</span>
+            <form onSubmit={handleAddUser}>
+              <div class="modal-body">
+                <div class="form-group">
+                  <label class="form-label">
+                    <span>Nomor Telepon WhatsApp / JID</span>
+                  </label>
+                  <input
+                    type="text"
+                    class="input"
+                    placeholder="Contoh: 08123456789 atau 628123456789"
+                    value={newPhone}
+                    onInput={(e) => setNewPhone((e.target as HTMLInputElement).value)}
+                    required
+                    autoFocus
+                  />
+                  <span class="form-hint">Otomatis diformat menjadi JID WhatsApp resmi (@s.whatsapp.net).</span>
+                </div>
+
+                <div class="form-group">
+                  <label class="form-label">
+                    <span>Nama Kontak (Opsional)</span>
+                  </label>
+                  <input
+                    type="text"
+                    class="input"
+                    placeholder="Nama panggilan pengguna"
+                    value={newName}
+                    onInput={(e) => setNewName((e.target as HTMLInputElement).value)}
+                  />
+                </div>
+
+                <div class="form-group">
+                  <label class="form-label">
+                    <span>Peran Otoritas (Role)</span>
+                  </label>
+                  <select
+                    class="input"
+                    value={newRole}
+                    onChange={(e) => setNewRole((e.target as HTMLSelectElement).value as any)}
+                  >
+                    <option value="member">MEMBER (Pengguna Biasa)</option>
+                    <option value="admin">ADMIN (Dapat Kelola Bot & Izin L1)</option>
+                    <option value="owner">OWNER (Pemilik Utama)</option>
+                  </select>
+                </div>
               </div>
 
-              <div class="form-group">
-                <label class="form-label">
-                  <span>Nama Kontak (Opsional)</span>
-                </label>
-                <input
-                  type="text"
-                  class="input"
-                  placeholder="Nama panggilan pengguna"
-                  value={newName}
-                  onInput={(e) => setNewName((e.target as HTMLInputElement).value)}
-                />
-              </div>
-
-              <div class="form-group">
-                <label class="form-label">
-                  <span>Peran Otoritas (Role)</span>
-                </label>
-                <select
-                  class="input"
-                  value={newRole}
-                  onChange={(e) => setNewRole((e.target as HTMLSelectElement).value as any)}
-                >
-                  <option value="member">MEMBER (Pengguna Biasa)</option>
-                  <option value="admin">ADMIN (Dapat Kelola Bot & Izin L1)</option>
-                  <option value="owner">OWNER (Pemilik Utama)</option>
-                </select>
-              </div>
-
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '8px' }}>
+              <footer class="modal-foot">
                 <button
                   type="button"
                   class="btn btn-secondary"
@@ -271,7 +273,7 @@ export function UsersPage() {
                   <Icons.Save width={14} height={14} />
                   <span>{submitting ? 'Menyimpan…' : 'Simpan Pengguna'}</span>
                 </button>
-              </div>
+              </footer>
             </form>
           </div>
         </div>

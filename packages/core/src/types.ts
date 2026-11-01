@@ -242,6 +242,18 @@ export interface ToolResult {
   retryable?: boolean;
 }
 
+export interface ToolServices {
+  messages?: any;
+  memory?: any;
+  settings?: any;
+  users?: any;
+  personas?: any;
+  chats?: any;
+  audit?: any;
+  adapter?: PlatformAdapter;
+  [key: string]: any;
+}
+
 /** Informasi minimal yang dibutuhkan tool saat dieksekusi. */
 export interface ToolContext {
   adapter: PlatformAdapter;
@@ -250,7 +262,7 @@ export interface ToolContext {
   role: Role;
   params: Record<string, unknown>;
   message?: InternalMessage;
-  services?: any;
+  services?: ToolServices;
   /** Ditandai true hanya jika dieksekusi lewat callback ApprovalEngine. */
   isApprovalExecution?: boolean;
 }

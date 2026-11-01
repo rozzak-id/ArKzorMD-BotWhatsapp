@@ -40,7 +40,7 @@ export interface AgentDependencies {
   maxSteps?: number;
   botName?: string;
   botNumber?: string;
-  services?: any;
+  services?: import('../types.js').ToolServices;
 }
 
 export function compactHistory(history: StoredMessage[], maxRecent = 10): AiMessage[] {

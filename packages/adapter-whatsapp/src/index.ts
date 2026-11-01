@@ -74,6 +74,10 @@ export interface WhatsAppAdapterOptions {
   commandPrefix?: string;
   /** Izinkan owner mengontrol bot langsung dari nomor akun bot itu sendiri (Self Mode). Default true. */
   allowSelfControl?: boolean;
+  /** Otomatis tandai pesan dibaca (centang biru) saat diterima. Default true. */
+  autoRead?: boolean;
+  /** Jeda simulasi pengetikan (anti-ban) dalam milidetik. Default 1200ms. */
+  jitterDelayMs?: number;
   onQr?: (qr: string) => void;
   onStatusChange?: (status: ConnectionStatus) => void;
 }
@@ -546,6 +550,18 @@ export class WhatsAppAdapter implements PlatformAdapter {
     this.handler = handler;
   }
 
+  setAllowSelfControl(enabled: boolean): void {
+    this.options.allowSelfControl = enabled;
+  }
+
+  setAutoRead(enabled: boolean): void {
+    this.options.autoRead = enabled;
+  }
+
+  setJitterDelayMs(ms: number): void {
+    this.options.jitterDelayMs = ms;
+  }
+
   async requestPairingCode(phoneNumber: string): Promise<string> {
     let cleanPhone = phoneNumber.replace(/\D/g, '');
     if (cleanPhone.startsWith('0')) {
@@ -776,6 +792,8 @@ export class WhatsAppAdapter implements PlatformAdapter {
       // presence bukan kritikal
     }
     try {
+      const delayMs = Math.max(250, this.options.jitterDelayMs ?? 1200);
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
       await action();
     } finally {
       try {
@@ -790,9 +808,16 @@ export class WhatsAppAdapter implements PlatformAdapter {
     media: MediaAttachment,
     caption: string | undefined,
   ): Promise<AnyMessageContent | null> {
-    if (!media.source) return null;
-
-    const source = await this.loadMediaSource(media.source);
+    let source: { url: string } | Buffer;
+    if (media.buffer) {
+      source = media.buffer;
+    } else if (media.base64) {
+      source = Buffer.from(media.base64, 'base64');
+    } else if (media.source) {
+      source = await this.loadMediaSource(media.source);
+    } else {
+      return null;
+    }
     switch (media.kind) {
       case 'image':
         return { image: source, ...(caption ? { caption } : {}) };
@@ -940,6 +965,11 @@ export class WhatsAppAdapter implements PlatformAdapter {
       sentMessageIds: this.sentMessageIds,
     });
     if (!message) return;
+
+    // Auto-read pesan WhatsApp (centang biru) jika diaktifkan (default: true)
+    if (this.options.autoRead !== false && this.socket && raw.key) {
+      void (this.socket as any).readMessages?.([raw.key]).catch(() => {});
+    }
 
     if (isLidJid(message.senderId) && this.socket) {
       try {

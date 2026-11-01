@@ -4,6 +4,38 @@ Semua perubahan penting pada proyek **ArKzorMD** akan dicatat dalam berkas ini. 
 
 ---
 
+## [v0.6.0] - 2026-11-01
+
+### Fitur Utama & Penyempurnaan (Highlights)
+
+#### 1. Perbaikan Eksekusi Perintah di Grup WhatsApp (P0)
+- **Prioritas Routing Command**: Pengecekan command dengan prefix valid (`.ping`, `.menu`, `.help`, dll.) kini dijalankan sebelum filter mode mention grup. Perintah bot di grup WhatsApp kini selalu merespon secara andal tanpa mewajibkan pengguna me-mention `@bot` di dalam perintah.
+
+#### 2. Aktivasi Dinamis Self-Control & Pemetaan Otomatis Owner (P0)
+- **Self-Control Mode Aktif**: Bot kini merespon pesan dari nomor HP akun bot itu sendiri (`key.fromMe = true`) saat mode Self-Control diaktifkan.
+- **Sinkronisasi Dinamis `ownerJid`**: Pengaturan `ownerJid` dibaca langsung dari database secara dinamis menggunakan normalisasi `bareJidUser()` sehingga perubahan owner di Setup Wizard langsung dikenali seketika tanpa perlu restart proses server.
+
+#### 3. Real WebP Sticker Engine & Image Conversion (P0)
+- **Sharp WebP Pipeline**: Menggantikan stub stiker dengan implementasi biner nyata menggunakan pustaka `sharp`.
+- **Perintah `.sticker`**: Mengonversi gambar/foto JPG, PNG, atau WebP menjadi stiker resmi WhatsApp ukuran 512x512 piksel dengan latar transparan dan kompresi kualitas tinggi.
+- **Perintah `.toimg`**: Mengonversi stiker WhatsApp WebP kembali menjadi file gambar PNG berkualitas tinggi.
+
+#### 4. Pengaktifan Runtime Auto-Read & Anti-Ban Typing Jitter (P0)
+- **Auto-Read (Centang Biru)**: Pengaturan `auto_read` kini dikonsumsi secara real-time oleh `WhatsAppAdapter` dengan memanggil `socket.readMessages()` saat pesan masuk.
+- **Jitter Typing Delay**: Mengaplikasikan jeda pengetikan proporsional (`jitterDelayMs`) di dalam status `withPresence('composing')` sebelum pesan terkirim guna mensimulasikan pengetikan alami dan mencegah deteksi spam WhatsApp.
+
+#### 5. Polishing UI/UX Web Console & Setup Wizard (P1)
+- **Styling Modal Pengguna**: Memperbaiki class modal pada halaman Pengguna & Role menggunakan `.modal-card`, `.modal-head`, `.modal-body`, dan `.modal-foot` standar XIAS.
+- **Eliminasi Scrollbar Kasar**: Menghapus `scrollbar-gutter: stable` dari sidebar dan menyembunyikan scroll track yang mengganggu estetika *dark-tech*.
+- **Quick Preset 9Router**: Tombol visual cepat untuk memilih provider 9Router di Step 2 Setup Wizard dengan konfigurasi port 20128 otomatis.
+- **Fix Pengujian Pesan Wizard**: Mengganti endpoint `/api/dev/inbound` di Step 6 dengan `api.playgroundChat` sehingga pengujian pesan berjalan sukses baik pada mode mock maupun live Baileys.
+
+#### 6. Zero-Emoji Compliance & Robustness (P2)
+- Menghapus seluruh unicode emoji yang tersisa pada `bot.ts`, membersihkan kurung kosong `[]` pada `clean.ts`, dan membuang spasi leading pada kategori `menu.ts`.
+- Menambahkan penanganan `try/catch` pada `Bot.runPlaygroundChat()` untuk menangani potensi error AI provider secara anggun.
+
+---
+
 ## [v0.5.0] - 2026-11-01
 
 ### Fitur Utama & Penyempurnaan (Highlights)

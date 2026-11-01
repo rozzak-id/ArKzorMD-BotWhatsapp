@@ -12,7 +12,7 @@ import type {
   ToolResult,
   User,
 } from './types.js';
-import type { ChatStore, MessageStore, PersonaStore, SettingsStore, UserStore } from './stores.js';
+import type { ChatStore, MemoryStore, MessageStore, PersonaStore, SettingsStore, UserStore } from './stores.js';
 import type { AuditLog } from './audit/audit-log.js';
 import type { ApprovalEngine } from './security/approval-engine.js';
 import type { DecideInput, DecideResult } from './security/approval-engine.js';
@@ -56,7 +56,7 @@ export interface BotDependencies {
   audit: AuditLog;
   logger: Logger;
   aiProviderId: string;
-  memory?: any;
+  memory?: MemoryStore;
 }
 
 export interface HandleResult {
@@ -150,21 +150,33 @@ export class Bot {
     }));
 
     const startTime = Date.now();
-    const result = await this.deps.agent.run({
-      message: fakeMessage,
-      role,
-      persona,
-      history: storedHistory,
-    });
-    const latencyMs = Date.now() - startTime;
+    try {
+      const result = await this.deps.agent.run({
+        message: fakeMessage,
+        role,
+        persona,
+        history: storedHistory,
+      });
+      const latencyMs = Date.now() - startTime;
 
-    return {
-      text: result.text,
-      latencyMs,
-      toolCalls: result.toolCalls,
-      pendingApprovals: result.pendingApprovals,
-      persona,
-    };
+      return {
+        text: result.text,
+        latencyMs,
+        toolCalls: result.toolCalls,
+        pendingApprovals: result.pendingApprovals,
+        persona,
+      };
+    } catch (err) {
+      const latencyMs = Date.now() - startTime;
+      const errorMsg = err instanceof Error ? err.message : String(err);
+      return {
+        text: `[ERROR] Gagal memproses respon AI: ${errorMsg}`,
+        latencyMs,
+        toolCalls: [],
+        pendingApprovals: [],
+        persona,
+      };
+    }
   }
 
   private async handleSafely(message: InternalMessage): Promise<void> {
@@ -235,21 +247,28 @@ export class Bot {
     if (user.status === 'pending') {
       await this.reply(
         message.chatId,
-        { text: '⏳ Akses kamu masih menunggu persetujuan Owner.' },
+        { text: '[MENUNGGU] Akses kamu masih menunggu persetujuan Owner.' },
         replies,
         message.id,
       );
       return { replies };
     }
 
-    if (message.isGroup && !this.shouldRespondInGroup(message)) {
-      return { replies, ignored: 'group-mode' };
-    }
-
+    // Router command diproses sebelum filter grup mention agar .ping, .menu, dll tetap bekerja
     const route = this.deps.router.route(message);
     if (route.kind === 'command') {
+      const chat = message.isGroup ? this.deps.chats.get(message.chatId) : undefined;
+      const mode = chat?.mode ?? this.deps.config.defaultChatMode;
+      if (message.isGroup && mode === 'off' && user.role === 'member') {
+        return { replies, ignored: 'group-mode-off' };
+      }
       await this.handleCommand(message, user, route.name, route.args, route.known, replies);
       return { replies };
+    }
+
+    // Untuk percakapan biasa ke AI di grup, filter mode grup berlaku
+    if (message.isGroup && !this.shouldRespondInGroup(message)) {
+      return { replies, ignored: 'group-mode' };
     }
 
     const history = this.deps.messages.recent(message.chatId, 20);
@@ -303,7 +322,12 @@ export class Bot {
     const existing = this.deps.users.get(message.senderId);
     if (existing) return { user: existing };
 
-    if (this.deps.config.ownerJid && message.senderId === this.deps.config.ownerJid) {
+    const dynamicOwner = this.deps.settings?.get('owner_jid') || this.deps.config.ownerJid;
+    const botJid = this.deps.adapter.getBotJid?.() ?? null;
+    const isOwner = (dynamicOwner && bareJidUser(message.senderId) === bareJidUser(dynamicOwner)) ||
+      (botJid && bareJidUser(message.senderId) === bareJidUser(botJid));
+
+    if (isOwner) {
       const created = this.deps.users.upsert({
         jid: message.senderId,
         name: message.senderName ?? 'Owner',
@@ -313,8 +337,8 @@ export class Bot {
       return { user: created };
     }
 
-    const { accessMode } = this.deps.config;
-    if (accessMode === 'auto-member') {
+    const accessMode = this.deps.settings?.get('access_mode') || this.deps.config.accessMode;
+    if (accessMode === 'auto-member' || accessMode === 'auto_member') {
       const created = this.deps.users.upsert({
         jid: message.senderId,
         name: message.senderName ?? null,
@@ -354,12 +378,12 @@ export class Bot {
   }
 
   private async notifyAccessRequest(message: InternalMessage): Promise<void> {
-    const owner = this.deps.config.ownerJid;
+    const owner = this.deps.settings?.get('owner_jid') || this.deps.config.ownerJid;
     if (!owner) return;
     try {
       await this.deps.adapter.send(owner, {
         text:
-          `🔔 *Permintaan akses baru*\n` +
+          `[NOTIFIKASI] *Permintaan Akses Baru*\n` +
           `Nomor: ${message.senderId}\n` +
           `Nama: ${message.senderName ?? '-'}\n\n` +
           `Setujui lewat Web UI (Pengguna & Role).`,
@@ -425,7 +449,7 @@ export class Bot {
     if (!definition.roles.includes(user.role)) {
       await this.reply(
         message.chatId,
-        { text: `⛔ Command \`.${name}\` tidak tersedia untuk role ${user.role}.` },
+        { text: `[DITOLAK] Perintah \`.${name}\` tidak tersedia untuk role ${user.role}.` },
         replies,
         message.id,
       );
@@ -457,7 +481,7 @@ export class Bot {
       this.deps.logger.error({ err: error, command: name }, 'Command gagal dieksekusi');
       await this.reply(
         message.chatId,
-        { text: '⚠️ Command gagal dijalankan. Coba lagi nanti.' },
+        { text: '[GAGAL] Perintah gagal dijalankan. Coba lagi nanti.' },
         replies,
         message.id,
       );
@@ -552,7 +576,7 @@ export class Bot {
       minute: '2-digit',
     });
     return [
-      `🔐 *Persetujuan ${request.shortCode}*`,
+      `[PERSETUJUAN] *${request.shortCode}*`,
       `Dari: ${request.requesterRole} (${request.requesterJid})`,
       `Aksi: ${request.toolName}`,
       `Detail: ${JSON.stringify(request.params)}`,

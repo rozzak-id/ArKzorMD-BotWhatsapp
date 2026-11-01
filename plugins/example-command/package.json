@@ -9,6 +9,6 @@
     ".": "./src/index.ts"
   },
   "dependencies": {
-    "@arkzormd/core": "0.1.0"
+    "@arkzormd/core": "*"
   }
 }

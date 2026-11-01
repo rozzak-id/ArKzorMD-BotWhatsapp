@@ -87,14 +87,21 @@ function createProvider(
 function createAdapter(
   config: AppConfig,
   logger: AppContext['logger'],
+  stores?: ReturnType<typeof createStores>,
 ): { adapter: PlatformAdapter; mock: MockAdapter | null } {
   if (config.whatsappMode === 'live') {
+    const selfControl = stores ? stores.settings.getBoolean('self_control', true) : true;
+    const autoRead = stores ? stores.settings.getBoolean('auto_read', true) : true;
+    const jitterDelayMs = stores ? stores.settings.getNumber('jitter_delay_ms', 1200) : 1200;
     return {
       adapter: new WhatsAppAdapter({
         authDir: resolve(config.dataDir, 'whatsapp-auth'),
         logger,
         moduleName: config.whatsappModule,
         commandPrefix: config.prefix,
+        allowSelfControl: selfControl,
+        autoRead,
+        jitterDelayMs,
       }),
       mock: null,
     };
@@ -128,7 +135,7 @@ export async function createAppContext(config: AppConfig): Promise<AppContext> {
   stores.settings.set('default_chat_mode', config.defaultChatMode);
   stores.settings.set('ai_provider', config.aiProvider);
 
-  const { adapter, mock } = createAdapter(config, logger);
+  const { adapter, mock } = createAdapter(config, logger, stores);
   if (config.whatsappMode === 'mock' && mock) {
     await mock.connect();
   }

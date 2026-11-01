@@ -349,17 +349,11 @@ export function SetupPage({ status, onFinish }: SetupPageProps) {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch('/api/dev/inbound', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({
-          text: testText,
-          from: ownerPhone ? `${ownerPhone.replace(/\D/g, '')}@s.whatsapp.net` : undefined,
-        }),
+      const res = await api.playgroundChat({
+        text: testText,
+        personaId: selectedPersona || undefined,
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Gagal mengirim pesan uji.');
-      const reply = data.replies?.[0]?.text ?? '(Bot menerima pesan tetapi tidak mengirim teks)';
+      const reply = res.text || '(Bot menerima pesan tetapi tidak mengirim teks)';
       setTestResponse(reply);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -482,6 +476,25 @@ export function SetupPage({ status, onFinish }: SetupPageProps) {
                 <label class="form-label">
                   <span>Penyedia AI</span>
                 </label>
+                <div style={{ display: 'flex', gap: '6px', marginBottom: '8px', flexWrap: 'wrap' }}>
+                  {[
+                    { id: '9router', label: '9Router' },
+                    { id: 'gemini', label: 'Gemini' },
+                    { id: 'openai', label: 'OpenAI' },
+                    { id: 'openrouter', label: 'OpenRouter' },
+                    { id: 'ollama', label: 'Ollama' },
+                  ].map((p) => (
+                    <button
+                      key={p.id}
+                      type="button"
+                      class={`btn btn-sm ${aiProvider === p.id ? 'btn-primary' : 'btn-secondary'}`}
+                      style={{ padding: '3px 10px', fontSize: '12px' }}
+                      onClick={() => handleProviderSelect(p.id)}
+                    >
+                      {p.label}
+                    </button>
+                  ))}
+                </div>
                 <select
                   class="input"
                   value={aiProvider}

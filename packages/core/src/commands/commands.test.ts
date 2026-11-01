@@ -73,5 +73,67 @@ describe('Modular Commands Architecture', () => {
     const res = await nsfw!.handler(mockContext);
     expect(res).toContain('Akses Ditolak');
   });
+
+  it('sticker command converts image buffer to webp sticker', async () => {
+    const sharp = (await import('sharp')).default;
+    const { stickerCommand } = await import('./media/sticker.js');
+
+    // Buat dummy PNG 100x100
+    const samplePng = await sharp({
+      create: {
+        width: 100,
+        height: 100,
+        channels: 4,
+        background: { r: 255, g: 0, b: 0, alpha: 1 },
+      },
+    }).png().toBuffer();
+
+    let sentPayload: any = null;
+    const mockContext: CommandContext = {
+      message: {
+        id: 'msg-img-1',
+        platform: 'whatsapp',
+        chatId: '123@s.whatsapp.net',
+        chatType: 'private',
+        senderId: '123@s.whatsapp.net',
+        isGroup: false,
+        text: '.s',
+        media: [
+          {
+            kind: 'image',
+            mimeType: 'image/png',
+            buffer: samplePng,
+          },
+        ],
+        mentions: [],
+        timestamp: Date.now(),
+        fromBot: false,
+      },
+      role: 'member',
+      args: [],
+      raw: '.s',
+      services: {
+        adapter: {
+          send: async (_chatId: string, content: any) => {
+            sentPayload = content;
+          },
+        } as any,
+      } as any,
+    };
+
+    const res = await stickerCommand.handler(mockContext);
+    expect(res).toBe('');
+    expect(sentPayload).toBeDefined();
+    expect(sentPayload.media).toHaveLength(1);
+    expect(sentPayload.media[0].kind).toBe('sticker');
+    expect(sentPayload.media[0].mimeType).toBe('image/webp');
+    expect(sentPayload.media[0].buffer).toBeInstanceOf(Buffer);
+
+    // Verifikasi metadata webp yang dihasilkan adalah 512x512
+    const meta = await sharp(sentPayload.media[0].buffer).metadata();
+    expect(meta.format).toBe('webp');
+    expect(meta.width).toBe(512);
+    expect(meta.height).toBe(512);
+  });
 });
 

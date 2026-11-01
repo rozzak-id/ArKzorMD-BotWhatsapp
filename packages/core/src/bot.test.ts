@@ -332,4 +332,49 @@ describe('Bot pipeline (mock end-to-end)', () => {
     const actions = harness.audit.list(50).map((entry) => entry.action);
     expect(actions).toContain('message.processing_failed');
   });
+
+  it('menjalankan perintah .ping di grup tanpa perlu mention saat mode grup mention', async () => {
+    const harness = createHarness();
+    cleanup = () => {
+      harness.bot.stop();
+      harness.db.close();
+    };
+    await harness.adapter.connect();
+    harness.bot.start();
+
+    // Mode grup default adalah 'mention'
+    await harness.adapter.receive(
+      message({
+        chatId: '120363000000000000@g.us',
+        isGroup: true,
+        text: '.ping',
+        mentions: [],
+      }),
+    );
+
+    expect(harness.adapter.sent).toHaveLength(1);
+    expect(harness.adapter.sent[0]?.content.text).toContain('Pong!');
+  });
+
+  it('menangani error provider AI pada runPlaygroundChat tanpa melempar exception', async () => {
+    const failingProvider: AiProvider = {
+      id: 'mock-fail',
+      async complete() {
+        throw new Error('API Key quota exhausted');
+      },
+    };
+    const harness = createHarness(failingProvider);
+    cleanup = () => {
+      harness.bot.stop();
+      harness.db.close();
+    };
+
+    const res = await harness.bot.runPlaygroundChat({
+      text: 'halo bot',
+    });
+
+    expect(res).toBeDefined();
+    expect(res.text).toContain('[ERROR]');
+    expect(res.text).toContain('API Key quota exhausted');
+  });
 });

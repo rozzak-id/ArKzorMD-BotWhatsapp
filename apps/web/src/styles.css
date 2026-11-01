@@ -265,7 +265,8 @@ h4 {
   height: 100vh;
   overflow-y: auto;
   overflow-x: hidden;
-  scrollbar-gutter: stable;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
   display: flex;
   flex-direction: column;
   gap: 20px;
@@ -273,6 +274,12 @@ h4 {
   background: var(--surface);
   border-right: 1px solid var(--border);
   box-shadow: 1px 0 0 var(--border-subtle);
+}
+
+.sidebar::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
 }
 
 .brand {

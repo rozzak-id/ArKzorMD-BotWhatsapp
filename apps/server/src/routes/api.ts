@@ -320,15 +320,18 @@ export function registerApiRoutes(app: FastifyInstance, context: AppContext): vo
     }
     if (typeof body.selfControl === 'boolean') {
       context.stores.settings.set('self_control', String(body.selfControl));
+      (context.adapter as any)?.setAllowSelfControl?.(body.selfControl);
     }
     if (typeof body.rateLimitPerMinute === 'number' && body.rateLimitPerMinute > 0) {
       context.stores.settings.set('rate_limit_per_minute', String(body.rateLimitPerMinute));
     }
     if (typeof body.jitterDelayMs === 'number' && body.jitterDelayMs >= 0) {
       context.stores.settings.set('jitter_delay_ms', String(body.jitterDelayMs));
+      (context.adapter as any)?.setJitterDelayMs?.(body.jitterDelayMs);
     }
     if (typeof body.autoRead === 'boolean') {
       context.stores.settings.set('auto_read', String(body.autoRead));
+      (context.adapter as any)?.setAutoRead?.(body.autoRead);
     }
 
     let reloadAi = false;
@@ -445,7 +448,7 @@ export function registerApiRoutes(app: FastifyInstance, context: AppContext): vo
           return reply.code(400).send({ ok: false, error: 'API key Gemini wajib diisi untuk mengambil daftar model.' });
         }
         const url = `https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(apiKey)}`;
-        const res = await fetch(url, { headers: { 'User-Agent': 'ArKzorMD/0.5.0' } });
+        const res = await fetch(url, { headers: { 'User-Agent': 'ArKzorMD/0.6.0' } });
         if (!res.ok) {
           const text = await res.text();
           throw new Error(`Gemini API error (${res.status}): ${text.slice(0, 150)}`);
@@ -461,7 +464,7 @@ export function registerApiRoutes(app: FastifyInstance, context: AppContext): vo
         const cleanBase = baseUrl.replace(/\/+$/, '');
         const modelsUrl = cleanBase.endsWith('/v1') ? `${cleanBase}/models` : `${cleanBase}/v1/models`;
         const headers: Record<string, string> = {
-          'User-Agent': 'ArKzorMD/0.5.0',
+          'User-Agent': 'ArKzorMD/0.6.0',
         };
         if (apiKey) {
           headers['Authorization'] = `Bearer ${apiKey}`;
