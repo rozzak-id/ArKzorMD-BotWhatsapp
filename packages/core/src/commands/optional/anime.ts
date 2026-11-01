@@ -24,7 +24,7 @@ export const animeCommand: CommandDefinition = {
  if (!query) {
  return `Format: \`.${rawCmd} <judul anime>\`\nContoh: \`.carianime Frieren\``;
  }
- return ` Menemukan anime: *${query}* [Score: 9.1 / MyAnimeList]`;
+ return `Menemukan anime: *${query}* - Score: 9.1 / MyAnimeList`;
  },
 };
 

@@ -374,7 +374,7 @@ describe('Bot pipeline (mock end-to-end)', () => {
     });
 
     expect(res).toBeDefined();
-    expect(res.text).toContain('[ERROR]');
+    expect(res.text).toContain('Gagal memproses respon AI');
     expect(res.text).toContain('API Key quota exhausted');
   });
 });

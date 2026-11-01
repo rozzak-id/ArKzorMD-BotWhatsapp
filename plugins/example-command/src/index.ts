@@ -13,8 +13,8 @@ export function createPluginCommands(): CommandDefinition[] {
       handler: (context) => {
         const target = context.args.length > 0 ? context.args.join(' ') : null;
         return target
-          ? `👋 Halo, ${target}! Command ini berasal dari plugin contoh.`
-          : `👋 Halo, ${context.message.senderName ?? 'kawan'}! Command ini berasal dari plugin contoh.`;
+          ? `Halo, ${target}! Command ini berasal dari plugin contoh.`
+          : `Halo, ${context.message.senderName ?? 'kawan'}! Command ini berasal dari plugin contoh.`;
       },
     },
   ];

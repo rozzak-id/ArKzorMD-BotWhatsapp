@@ -93,7 +93,7 @@ export function ApprovalsPage() {
 
               <div class="row-between" style={{ marginTop: '8px' }}>
                 <footer class="muted small">
-                  Pemohon: <strong>{request.requesterRole}</strong> (<code>{shortJid(request.requesterJid)}</code>) · Kedaluwarsa:{' '}
+                  Pemohon: <strong>{request.requesterRole}</strong> - <code>{shortJid(request.requesterJid)}</code> · Kedaluwarsa:{' '}
                   {formatTime(request.expiresAt)}
                 </footer>
 
@@ -133,7 +133,7 @@ export function ApprovalsPage() {
       </Card>
 
       <Card
-        title="Daftar Aturan Tetap (Setuju Selalu)"
+        title="Daftar Aturan Tetap - Setuju Selalu"
         subtitle="Aturan otomatisasi yang dibuat saat Owner memilih 'Setuju Selalu'"
         icon={<Icons.ShieldCheck width={16} height={16} />}
       >

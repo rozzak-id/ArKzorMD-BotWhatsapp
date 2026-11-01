@@ -674,8 +674,8 @@ export class WhatsAppAdapter implements PlatformAdapter {
       minute: '2-digit',
     });
     const text = [
-      `🔐 *Persetujuan ${request.shortCode}*`,
-      `Dari: ${request.requesterRole} (${request.requesterJid})`,
+      `*Persetujuan ${request.shortCode}*`,
+      `Dari: ${request.requesterRole} - ${request.requesterJid}`,
       `Aksi: ${request.toolName}`,
       `Detail: ${JSON.stringify(request.params)}`,
       `Berlaku sampai: ${expiry}`,
@@ -688,18 +688,18 @@ export class WhatsAppAdapter implements PlatformAdapter {
     // 1. Coba kirim tombol interaktif Native Flow (modern Android/iOS WhatsApp)
     try {
       await sendInteractiveMessage(socket, this.module, ownerId, {
-        title: `🔐 Persetujuan ${request.shortCode}`,
+        title: `Persetujuan ${request.shortCode}`,
         body: [
-          `Dari: ${request.requesterRole} (${request.requesterJid})`,
+          `Dari: ${request.requesterRole} - ${request.requesterJid}`,
           `Aksi: ${request.toolName}`,
           `Detail: ${JSON.stringify(request.params)}`,
           `Berlaku sampai: ${expiry}`,
         ].join('\n'),
         footer: 'ArKzorMD · Persetujuan Owner',
         buttons: [
-          { text: '✅ Setuju', id: `${this.commandPrefix}approve ${request.shortCode}` },
-          { text: '❌ Tolak', id: `${this.commandPrefix}reject ${request.shortCode}` },
-          { text: '⚡ Setuju Selalu', id: `${this.commandPrefix}always ${request.shortCode}` },
+          { text: 'Setuju', id: `${this.commandPrefix}approve ${request.shortCode}` },
+          { text: 'Tolak', id: `${this.commandPrefix}reject ${request.shortCode}` },
+          { text: 'Setuju Selalu', id: `${this.commandPrefix}always ${request.shortCode}` },
         ],
       });
       return;

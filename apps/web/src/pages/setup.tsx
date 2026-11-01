@@ -431,7 +431,7 @@ export function SetupPage({ status, onFinish }: SetupPageProps) {
           <form onSubmit={handleStep1Submit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
             <div class="form-group">
               <label class="form-label">
-                <span>Password Admin (minimal 8 karakter)</span>
+                <span>Password Admin</span>
               </label>
               <input
                 type="password"
@@ -500,13 +500,13 @@ export function SetupPage({ status, onFinish }: SetupPageProps) {
                   value={aiProvider}
                   onChange={(e) => handleProviderSelect((e.target as HTMLSelectElement).value)}
                 >
-                  <option value="9router">9Router (Local AI Gateway · :20128)</option>
-                  <option value="gemini">Google Gemini (Disarankan, cepat & hemat)</option>
-                  <option value="openai">OpenAI (GPT-4o, GPT-4o-mini)</option>
-                  <option value="openrouter">OpenRouter (Claude, DeepSeek, Llama)</option>
-                  <option value="ollama">Ollama (Model Lokal Offline)</option>
-                  <option value="custom">Custom OpenAI-Compatible API</option>
-                  <option value="mock">Mock Provider (Simulasi Uji Coba)</option>
+                  <option value="9router">9Router - Local AI Gateway</option>
+                  <option value="gemini">Google Gemini</option>
+                  <option value="openai">OpenAI</option>
+                  <option value="openrouter">OpenRouter</option>
+                  <option value="ollama">Ollama</option>
+                  <option value="custom">Custom API</option>
+                  <option value="mock">Mock Provider</option>
                 </select>
                 <span class="form-hint">
                   {aiProvider === '9router' && 'Gunakan 9Router local gateway port 20128. Tanpa kuota cloud.'}
@@ -612,7 +612,7 @@ export function SetupPage({ status, onFinish }: SetupPageProps) {
 
             {testResult && (
               <div class={`banner ${testResult.ok ? 'ok' : 'danger'}`} style={{ padding: '10px 14px' }}>
-                <strong>{testResult.ok ? `✓ Koneksi AI Berhasil (${testResult.latencyMs}ms)` : '✕ Koneksi Gagal'}</strong>
+                <strong>{testResult.ok ? `Koneksi AI Berhasil - ${testResult.latencyMs} ms` : 'Koneksi Gagal'}</strong>
                 <p class="small" style={{ margin: '2px 0 0' }}>
                   {testResult.ok ? `Balasan: "${testResult.reply}"` : testResult.error}
                 </p>
@@ -672,7 +672,7 @@ export function SetupPage({ status, onFinish }: SetupPageProps) {
               onClick={() => setWaMethod('code')}
             >
               <Icons.Key width={13} height={13} />
-              <span>Pairing Code (8 Digit)</span>
+              <span>Pairing Code</span>
             </button>
           </div>
 
@@ -749,7 +749,7 @@ export function SetupPage({ status, onFinish }: SetupPageProps) {
                 <form onSubmit={handlePairingCodeRequest} style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                   <div class="form-group">
                     <label class="form-label">
-                      <span>Nomor HP WhatsApp Bot (dengan kode negara)</span>
+                      <span>Nomor HP WhatsApp Bot</span>
                     </label>
                     <input
                       type="tel"
@@ -800,7 +800,7 @@ export function SetupPage({ status, onFinish }: SetupPageProps) {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '1.5rem' }}>
               <div class="form-group">
                 <label class="form-label">
-                  <span>Nomor WhatsApp Owner (Pemilik Bot)</span>
+                  <span>Nomor WhatsApp Owner</span>
                 </label>
                 <div style={{ display: 'flex', gap: '0.5rem' }}>
                   <input
@@ -908,7 +908,7 @@ export function SetupPage({ status, onFinish }: SetupPageProps) {
                 >
                   {personas.map((p) => (
                     <option key={p.id} value={p.id}>
-                      {p.name} ({p.style}) — {p.greeting ? `"${p.greeting}"` : p.id}
+                      {p.name} - {p.greeting ? `"${p.greeting}"` : p.id}
                     </option>
                   ))}
                 </select>
@@ -931,7 +931,7 @@ export function SetupPage({ status, onFinish }: SetupPageProps) {
                   </div>
                   <div class="form-group">
                     <label class="form-label">
-                      <span>Gaya Tutur (Tone)</span>
+                      <span>Gaya Tutur</span>
                     </label>
                     <input
                       type="text"
@@ -945,7 +945,7 @@ export function SetupPage({ status, onFinish }: SetupPageProps) {
 
                 <div class="form-group">
                   <label class="form-label">
-                    <span>Sapaan Awal (Greeting)</span>
+                    <span>Sapaan Awal</span>
                   </label>
                   <input
                     type="text"
@@ -983,7 +983,7 @@ export function SetupPage({ status, onFinish }: SetupPageProps) {
                     onChange={() => setAccessMode('closed')}
                   />
                   <span>
-                    <strong>Tertutup (Disarankan)</strong> — Hanya membalas Owner & Admin; nomor asing diabaikan.
+                    <strong>Tertutup</strong> — Hanya membalas Owner & Admin; nomor asing diabaikan.
                   </span>
                 </label>
                 <label style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', cursor: 'pointer' }}>
@@ -995,7 +995,7 @@ export function SetupPage({ status, onFinish }: SetupPageProps) {
                     onChange={() => setAccessMode('auto_member')}
                   />
                   <span>
-                    <strong>Member Otomatis (Publik)</strong> — Nomor baru otomatis menjadi Member dan dapat mengobrol.
+                    <strong>Member Otomatis</strong> — Nomor baru otomatis menjadi Member dan dapat mengobrol.
                   </span>
                 </label>
                 <label style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', cursor: 'pointer' }}>

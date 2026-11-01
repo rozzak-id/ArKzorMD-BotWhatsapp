@@ -18,12 +18,12 @@ export const cleanCommand: CommandDefinition = {
     const result = cleanAiMarks(targetText, { normalizeSpaces: true, nfkc: true });
 
     if (result.marksFound === 0) {
-      return `[BERSIH] Teks sudah bersih dari tanda air AI tak kasat mata (0 watermark terdeteksi).\n\n${result.cleanedText}`;
+      return `Teks sudah bersih dari tanda air AI tak kasat mata.\n\n${result.cleanedText}`;
     }
 
     const report = result.detectedTypes.join(', ');
     return (
-      `[SUKSES] Berhasil membersihkan ${result.marksFound} tanda air AI!\n` +
+      `Berhasil membersihkan ${result.marksFound} tanda air AI.\n` +
       `Deteksi: ${report}\n\n` +
       `Hasil Bersih:\n${result.cleanedText}`
     );

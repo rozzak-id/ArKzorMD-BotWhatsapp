@@ -170,7 +170,7 @@ export class Bot {
       const latencyMs = Date.now() - startTime;
       const errorMsg = err instanceof Error ? err.message : String(err);
       return {
-        text: `[ERROR] Gagal memproses respon AI: ${errorMsg}`,
+        text: `Gagal memproses respon AI: ${errorMsg}`,
         latencyMs,
         toolCalls: [],
         pendingApprovals: [],
@@ -205,7 +205,7 @@ export class Bot {
             message.chatId,
             {
               text:
-                '[PERINGATAN] Maaf, layanan AI sedang bermasalah. ' +
+                'Maaf, layanan AI sedang bermasalah. ' +
                 'Coba lagi beberapa saat lagi ya.',
             },
             [],
@@ -247,7 +247,7 @@ export class Bot {
     if (user.status === 'pending') {
       await this.reply(
         message.chatId,
-        { text: '[MENUNGGU] Akses kamu masih menunggu persetujuan Owner.' },
+        { text: 'Akses kamu masih menunggu persetujuan Owner.' },
         replies,
         message.id,
       );
@@ -277,7 +277,7 @@ export class Bot {
       platform: message.platform,
       senderId: message.senderId,
       role: 'user',
-      content: message.text || '[pesan media]',
+      content: message.text || 'pesan media',
     });
 
     const assignedPersonaId = this.deps.personas.getAssignment?.(
@@ -383,10 +383,10 @@ export class Bot {
     try {
       await this.deps.adapter.send(owner, {
         text:
-          `[NOTIFIKASI] *Permintaan Akses Baru*\n` +
+          `*Permintaan Akses Baru*\n` +
           `Nomor: ${message.senderId}\n` +
           `Nama: ${message.senderName ?? '-'}\n\n` +
-          `Setujui lewat Web UI (Pengguna & Role).`,
+          `Setujui lewat Web UI Pengguna & Role.`,
       });
     } catch (error) {
       this.deps.logger.warn({ err: error }, 'Gagal mengirim notifikasi akses ke Owner');
@@ -449,7 +449,7 @@ export class Bot {
     if (!definition.roles.includes(user.role)) {
       await this.reply(
         message.chatId,
-        { text: `[DITOLAK] Perintah \`.${name}\` tidak tersedia untuk role ${user.role}.` },
+        { text: `Perintah \`.${name}\` tidak tersedia untuk role ${user.role}.` },
         replies,
         message.id,
       );
@@ -481,7 +481,7 @@ export class Bot {
       this.deps.logger.error({ err: error, command: name }, 'Command gagal dieksekusi');
       await this.reply(
         message.chatId,
-        { text: '[GAGAL] Perintah gagal dijalankan. Coba lagi nanti.' },
+        { text: 'Perintah gagal dijalankan. Coba lagi nanti.' },
         replies,
         message.id,
       );
@@ -576,8 +576,8 @@ export class Bot {
       minute: '2-digit',
     });
     return [
-      `[PERSETUJUAN] *${request.shortCode}*`,
-      `Dari: ${request.requesterRole} (${request.requesterJid})`,
+      `*Persetujuan ${request.shortCode}*`,
+      `Dari: ${request.requesterRole} - ${request.requesterJid}`,
       `Aksi: ${request.toolName}`,
       `Detail: ${JSON.stringify(request.params)}`,
       `Berlaku sampai: ${expiry}`,
@@ -615,8 +615,8 @@ export class Bot {
     });
 
     const notification = result.ok
-      ? `[SUKSES] Aksi *${request.toolName}* (${request.shortCode}) disetujui Owner dan sudah dijalankan.`
-      : `[PERINGATAN] Aksi *${request.toolName}* disetujui, tetapi gagal: ${result.error ?? 'tidak diketahui'}.`;
+      ? `Aksi *${request.toolName}* ${request.shortCode} disetujui Owner dan sudah dijalankan.`
+      : `Aksi *${request.toolName}* disetujui, tetapi gagal: ${result.error ?? 'tidak diketahui'}.`;
 
     const replies: string[] = [];
     await this.reply(request.chatId, { text: notification }, replies);

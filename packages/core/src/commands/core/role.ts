@@ -27,7 +27,7 @@ export const roleCommand: CommandDefinition = {
  const admins = allUsers.filter((u) => u.role === 'admin' || u.role === 'owner');
  return [
  '* Daftar Pengelola Bot*',
- ...admins.map((u) => `• +${u.jid.split('@')[0]} [${u.role.toUpperCase()}]`),
+ ...admins.map((u) => `• +${u.jid.split('@')[0]} - ${u.role.toUpperCase()}`),
  ].join('\n');
  }
 

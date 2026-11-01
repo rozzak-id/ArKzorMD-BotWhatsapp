@@ -40,7 +40,7 @@ export const toimgCommand: CommandDefinition = {
       return '';
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
-      return `[GAGAL] Gagal mengonversi stiker ke gambar: ${msg}`;
+      return `Gagal mengonversi stiker ke gambar: ${msg}`;
     }
   },
 };

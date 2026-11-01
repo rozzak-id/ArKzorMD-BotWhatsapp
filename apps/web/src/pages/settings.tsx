@@ -202,20 +202,20 @@ export function SettingsPage() {
             <div class="grid grid-2">
               <div class="form-group">
                 <label class="form-label">
-                  <span>Penyedia AI (Provider)</span>
+                  <span>Penyedia AI</span>
                 </label>
                 <select
                   class="input"
                   value={aiProvider}
                   onChange={(e) => handleProviderChange((e.target as HTMLSelectElement).value)}
                 >
-                  <option value="9router">9Router (Local AI Gateway · :20128)</option>
-                  <option value="gemini">Google Gemini (Gemini 2.5 Flash / Pro)</option>
-                  <option value="openai">OpenAI Resmi (GPT-4o / GPT-4o-mini)</option>
-                  <option value="openrouter">OpenRouter (DeepSeek, Claude, Llama)</option>
-                  <option value="ollama">Ollama Local (:11434/v1)</option>
-                  <option value="custom">Custom OpenAI-Compatible Endpoint</option>
-                  <option value="mock">Mode Mock (Uji coba tanpa kuota)</option>
+                  <option value="9router">9Router Local AI Gateway</option>
+                  <option value="gemini">Google Gemini</option>
+                  <option value="openai">OpenAI Resmi</option>
+                  <option value="openrouter">OpenRouter</option>
+                  <option value="ollama">Ollama Local</option>
+                  <option value="custom">Custom Endpoint</option>
+                  <option value="mock">Mode Mock</option>
                 </select>
                 <span class="form-hint">
                   {aiProvider === '9router' && 'Terhubung ke 9Router gateway lokal Anda. OpenAI-compatible di port 20128.'}
@@ -407,9 +407,9 @@ export function SettingsPage() {
           {/* Toggle Self Control */}
           <div class="toggle-row">
             <div>
-              <strong style={{ display: 'block', fontSize: '14.5px' }}>Mode Self Control (Respon Chat Nomor Sendiri)</strong>
+              <strong style={{ display: 'block', fontSize: '14.5px' }}>Mode Self Control - Respon Chat Nomor Sendiri</strong>
               <p class="form-hint" style={{ margin: '2px 0 0' }}>
-                Jika aktif, Owner dapat mengetik perintah (seperti <code>.menu</code>, <code>.ping</code>, atau chat AI) langsung dari aplikasi WhatsApp di HP bot itu sendiri tanpa diabaikan.
+                Jika aktif, Owner dapat mengetik perintah seperti <code>.menu</code>, <code>.ping</code>, atau chat AI langsung dari aplikasi WhatsApp di HP bot itu sendiri tanpa diabaikan.
               </p>
             </div>
             <label class="toggle-switch">
@@ -425,7 +425,7 @@ export function SettingsPage() {
           {/* Toggle Auto-Read */}
           <div class="toggle-row">
             <div>
-              <strong style={{ display: 'block', fontSize: '14.5px' }}>Auto-Read Pesan WhatsApp (Centang Biru)</strong>
+              <strong style={{ display: 'block', fontSize: '14.5px' }}>Auto-Read Pesan WhatsApp</strong>
               <p class="form-hint" style={{ margin: '2px 0 0' }}>
                 Tandai pesan dibaca otomatis saat bot merespon. Matikan bila ingin bot bekerja tanpa menandai pesan telah dibaca.
               </p>
@@ -443,7 +443,7 @@ export function SettingsPage() {
           <div class="grid grid-2">
             <div class="form-group">
               <label class="form-label">
-                <span>Anti-Ban Typing Delay (ms)</span>
+                <span>Anti-Ban Typing Delay ms</span>
               </label>
               <input
                 type="number"
@@ -455,12 +455,12 @@ export function SettingsPage() {
                 onInput={(e) => setJitterDelayMs(Number((e.target as HTMLInputElement).value))}
                 required
               />
-              <span class="form-hint">Jeda mengetik alami sebelum mengirim pesan balasan (simulasi manusia)</span>
+              <span class="form-hint">Jeda mengetik alami sebelum mengirim pesan balasan untuk simulasi manusia</span>
             </div>
 
             <div class="form-group">
               <label class="form-label">
-                <span>Batas Rate Limit (Pesan/Menit)</span>
+                <span>Batas Rate Limit Pesan per Menit</span>
               </label>
               <input
                 type="number"
@@ -489,7 +489,7 @@ export function SettingsPage() {
                 placeholder="."
                 required
               />
-              <span class="form-hint">Karakter awalan perintah bot (misal: .)</span>
+              <span class="form-hint">Karakter awalan perintah bot seperti titik</span>
             </div>
 
             <div class="form-group">
@@ -501,8 +501,8 @@ export function SettingsPage() {
                 value={accessMode}
                 onChange={(e) => setAccessMode((e.target as HTMLSelectElement).value)}
               >
-                <option value="closed">Tertutup (Hanya Owner & Admin)</option>
-                <option value="auto_member">Member Otomatis (Publik)</option>
+                <option value="closed">Tertutup - Hanya Owner & Admin</option>
+                <option value="auto_member">Member Otomatis</option>
                 <option value="approval">Perlu Persetujuan Owner</option>
               </select>
               <span class="form-hint">Bagaimana bot menyikapi nomor baru yang belum terdaftar</span>
@@ -521,14 +521,14 @@ export function SettingsPage() {
       {/* 3. Zona Bahaya: Reset Data */}
       <Card
         title="Zona Bahaya & Reset Data"
-        subtitle="Hapus memori percakapan, bersihkan audit log, atau kembalikan bot ke kondisi awal (Setup Wizard)"
+        subtitle="Hapus memori percakapan, bersihkan audit log, atau kembalikan bot ke kondisi awal"
         icon={<Icons.AlertTriangle width={16} height={16} />}
         className="danger-zone"
       >
         <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
           <div class="toggle-row" style={{ background: 'rgba(15, 23, 42, 0.6)' }}>
             <div>
-              <strong style={{ display: 'block' }}>Reset Memori Bot (Long-Term Facts)</strong>
+              <strong style={{ display: 'block' }}>Reset Memori Bot</strong>
               <span class="form-hint">Menghapus semua catatan fakta dan memori jangka panjang yang dipelajari bot dari pengguna.</span>
             </div>
             <button
@@ -560,7 +560,7 @@ export function SettingsPage() {
 
           <div class="toggle-row" style={{ background: 'rgba(15, 23, 42, 0.6)' }}>
             <div>
-              <strong style={{ display: 'block' }}>Factory Reset (Ulangi Setup Wizard)</strong>
+              <strong style={{ display: 'block' }}>Factory Reset</strong>
               <span class="form-hint">Mereset memori, audit log, dan mengembalikan status bot agar Setup Wizard dapat dijalankan ulang dari langkah 1.</span>
             </div>
             <button

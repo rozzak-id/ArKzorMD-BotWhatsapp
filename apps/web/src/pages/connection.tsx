@@ -350,7 +350,7 @@ function PairingPanel({ status }: { status: StatusResponse | null }) {
                   class="btn btn-primary btn-sm"
                   onClick={handleCopyCode}
                 >
-                  {copied ? '✓ Kode Tersalin!' : 'Salin Kode'}
+                  {copied ? 'Kode Tersalin!' : 'Salin Kode'}
                 </button>
                 <button
                   type="button"

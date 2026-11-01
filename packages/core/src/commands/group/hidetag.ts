@@ -14,7 +14,7 @@ export const hidetagCommand: CommandDefinition = {
  if (!text && context.message.media.length === 0) {
  return 'Ketik teks yang ingin di-hidetag, contoh: `.hidetag Pengumuman penting!`';
  }
- return ` *PENGUMUMAN*\n\n${text || '[Media Lampiran]'}`;
+ return `*PENGUMUMAN*\n\n${text || 'Media Lampiran'}`;
  },
 };
 

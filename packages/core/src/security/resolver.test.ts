@@ -49,7 +49,7 @@ describe('Effective Level Resolver (resolveEffectiveLevel - Bagian 3)', () => {
     });
 
     expect(resolveEffectiveLevel(replyTool, { text: 'halo' }, baseContext).level).toBe('L0');
-    expect(resolveEffectiveLevel(reactTool, { emoji: '👍' }, baseContext).level).toBe('L0');
+    expect(resolveEffectiveLevel(reactTool, { emoji: '+' }, baseContext).level).toBe('L0');
     expect(resolveEffectiveLevel(sendThisChat, { text: 'halo' }, baseContext).level).toBe('L0');
     expect(
       resolveEffectiveLevel(sendThisChat, { to: '628111@s.whatsapp.net', text: 'halo' }, baseContext).level,

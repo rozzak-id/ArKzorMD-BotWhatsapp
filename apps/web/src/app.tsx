@@ -201,7 +201,7 @@ export function App() {
         <div class="sidebar-foot">
           <p style={{ fontWeight: 600 }}>v{status?.version ?? '0.6.0'}</p>
           <p class="muted small">
-            AI: <code>{status?.ai.provider ?? 'mock'}</code> ({status?.ai.model ?? 'default'})
+            AI: <code>{status?.ai.provider ?? 'mock'}</code> - {status?.ai.model ?? 'default'}
           </p>
         </div>
       </aside>

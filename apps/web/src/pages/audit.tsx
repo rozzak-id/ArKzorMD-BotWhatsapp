@@ -83,7 +83,7 @@ export function AuditPage() {
         </div>
       )}
       <p class="muted small" style={{ marginTop: '1.25rem' }}>
-        * Kunci API, token, dan data rahasia otomatis disaring (redacted) oleh Audit Engine sebelum disimpan di SQLite.
+        * Kunci API, token, dan data rahasia otomatis disaring secara aman oleh Audit Engine sebelum disimpan di SQLite.
       </p>
     </Card>
   );

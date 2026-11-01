@@ -61,7 +61,7 @@ export function ToolsPage() {
       )}
 
       <Card
-        title="Matriks Izin Tool AI (Permission Engine)"
+        title="Matriks Izin Tool AI"
         subtitle="Daftar kapabilitas alat, tingkat resiko, dan pembatasan peran aktor"
         icon={<Icons.Tools width={16} height={16} />}
         action={

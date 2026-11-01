@@ -11,7 +11,7 @@ export const bratCommand: CommandDefinition = {
     if (!text) {
       return 'Ketik teks yang ingin dijadikan stiker brat, contoh: `.brat kamu nanya`';
     }
-    return `🟩 Membuat stiker Brat untuk: *"${text}"*...`;
+    return `Membuat stiker Brat untuk: *"${text}"*...`;
   },
 };
 

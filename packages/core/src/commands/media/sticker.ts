@@ -52,7 +52,7 @@ export const stickerCommand: CommandDefinition = {
       return '';
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
-      return `[GAGAL] Gagal membuat stiker: ${msg}`;
+      return `Gagal membuat stiker: ${msg}`;
     }
   },
 };

@@ -11,7 +11,7 @@ export const gcCommand: CommandDefinition = {
  if (chats.length === 0) {
  return 'Belum ada grup yang tersimpan di database bot.';
  }
- const lines = chats.map((c, i) => `${i + 1}. \`${c.id}\` [Mode: ${c.mode}]`);
+ const lines = chats.map((c, i) => `${i + 1}. \`${c.id}\` Mode: ${c.mode}`);
  return ['* DAFTAR GRUP BOT*', ...lines].join('\n');
  },
 };

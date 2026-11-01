@@ -239,7 +239,7 @@ export function createBuiltinTools(): ToolDefinition[] {
       params: {
         type: 'object',
         properties: {
-          emoji: { type: 'string', description: 'Single emoji character, e.g. 👍' },
+          emoji: { type: 'string', description: 'Single reaction character or symbol' },
           messageId: { type: 'string', description: 'Target message ID to react to' },
         },
         required: ['emoji'],

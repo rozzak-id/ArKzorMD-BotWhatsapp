@@ -233,7 +233,7 @@ export function UsersPage() {
 
                 <div class="form-group">
                   <label class="form-label">
-                    <span>Nama Kontak (Opsional)</span>
+                    <span>Nama Kontak</span>
                   </label>
                   <input
                     type="text"
@@ -246,16 +246,16 @@ export function UsersPage() {
 
                 <div class="form-group">
                   <label class="form-label">
-                    <span>Peran Otoritas (Role)</span>
+                    <span>Peran Otoritas</span>
                   </label>
                   <select
                     class="input"
                     value={newRole}
                     onChange={(e) => setNewRole((e.target as HTMLSelectElement).value as any)}
                   >
-                    <option value="member">MEMBER (Pengguna Biasa)</option>
-                    <option value="admin">ADMIN (Dapat Kelola Bot & Izin L1)</option>
-                    <option value="owner">OWNER (Pemilik Utama)</option>
+                    <option value="member">Member</option>
+                    <option value="admin">Admin</option>
+                    <option value="owner">Owner</option>
                   </select>
                 </div>
               </div>
