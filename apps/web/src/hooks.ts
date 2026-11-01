@@ -69,7 +69,7 @@ export function useLiveStatus(): { status: StatusResponse | null; error: string 
     };
 
     load();
-    const timer = window.setInterval(load, 15_000);
+    const timer = window.setInterval(load, 3_000);
 
     try {
       const protocol = location.protocol === 'https:' ? 'wss' : 'ws';

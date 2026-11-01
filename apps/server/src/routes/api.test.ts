@@ -92,12 +92,26 @@ describe('Server API & Auth Routes', () => {
     });
     expect(unauthedRes.statusCode).toBe(401);
 
-    // 5. WhatsApp Pairing Code via API
+    // 5. WhatsApp Connect, Disconnect & Pairing Code via API
+    const connectRes = await app.inject({
+      method: 'POST',
+      url: '/api/whatsapp/connect',
+      headers: { 'x-session-token': sessionToken },
+    });
+    expect(connectRes.statusCode).toBe(200);
+
+    const disconnectRes = await app.inject({
+      method: 'POST',
+      url: '/api/whatsapp/disconnect',
+      headers: { 'x-session-token': sessionToken },
+    });
+    expect(disconnectRes.statusCode).toBe(200);
+
     const pairingRes = await app.inject({
       method: 'POST',
       url: '/api/whatsapp/pairing-code',
       headers: { 'x-session-token': sessionToken },
-      payload: { phoneNumber: '628123456789' },
+      payload: { phoneNumber: '08123456789' }, // uji auto-convert 0 -> 62
     });
     expect(pairingRes.statusCode).toBe(200);
     const pairingBody = JSON.parse(pairingRes.payload);

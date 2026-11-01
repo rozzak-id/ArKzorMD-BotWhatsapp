@@ -2,7 +2,7 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import type { InternalMessage, Persona } from '@arkzormd/core';
 import type { AppContext } from '../context.js';
-import { requireAdmin } from '../auth.js';
+import { isSetupCompleted, requireAdmin } from '../auth.js';
 import { APP_VERSION, buildPlatforms, buildStatus } from '../status.js';
 
 const decisionSchema = z.object({
@@ -315,12 +315,63 @@ export function registerApiRoutes(app: FastifyInstance, context: AppContext): vo
     return { ok: true, chatId: params.id, personaId: body?.personaId ?? null };
   });
 
+  const checkAccess = (request: FastifyRequest, reply: FastifyReply): boolean => {
+    if (!isSetupCompleted(context)) {
+      return true;
+    }
+    return requireAdmin(context, request, reply);
+  };
+
+  app.post('/api/whatsapp/connect', async (request, reply) => {
+    if (!checkAccess(request, reply)) return reply;
+    if (context.config.whatsappMode === 'off') {
+      return reply.code(400).send({ error: 'WhatsApp dimatikan lewat WHATSAPP_MODE=off.' });
+    }
+    const currentStatus = context.adapter.getStatus();
+    if (currentStatus === 'connected') {
+      return { ok: true, status: 'connected', message: 'WhatsApp sudah terhubung.' };
+    }
+    try {
+      void context.adapter.connect().catch((err: unknown) => {
+        context.logger.error({ err }, 'Koneksi WhatsApp manual gagal');
+      });
+      return {
+        ok: true,
+        status: context.adapter.getStatus(),
+        qr: context.adapter.getQr?.() ?? null,
+      };
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error);
+      return reply.code(500).send({ error: `Gagal memulai koneksi WhatsApp: ${msg}` });
+    }
+  });
+
+  app.post('/api/whatsapp/disconnect', async (request, reply) => {
+    if (!checkAccess(request, reply)) return reply;
+    try {
+      await context.adapter.disconnect();
+      return { ok: true, status: context.adapter.getStatus() };
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error);
+      return reply.code(500).send({ error: `Gagal memutuskan WhatsApp: ${msg}` });
+    }
+  });
+
   app.post('/api/whatsapp/pairing-code', async (request, reply) => {
-    if (!requireAdmin(context, request, reply)) return reply;
+    if (!checkAccess(request, reply)) return reply;
     const body = request.body as { phoneNumber?: string } | undefined;
-    const phone = body?.phoneNumber?.trim();
+    let phone = body?.phoneNumber?.trim();
     if (!phone) {
       return reply.code(400).send({ error: 'Nomor telepon wajib diisi.' });
+    }
+    phone = phone.replace(/\D/g, '');
+    if (phone.startsWith('0')) {
+      phone = '62' + phone.slice(1);
+    }
+    if (phone.length < 8 || phone.length > 15) {
+      return reply.code(400).send({
+        error: 'Nomor telepon harus dalam format internasional yang valid (mis. 628123456789).',
+      });
     }
     if (!context.adapter.requestPairingCode) {
       return reply.code(501).send({ error: 'Adapter platform saat ini tidak mendukung pairing code.' });

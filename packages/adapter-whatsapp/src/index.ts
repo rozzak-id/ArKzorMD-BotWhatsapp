@@ -395,8 +395,15 @@ export class WhatsAppAdapter implements PlatformAdapter {
   }
 
   async connect(): Promise<void> {
-    if (this.status === 'connected' || this.socket) return;
+    if (this.status === 'connected') return;
     if (this.connecting) return this.connecting;
+
+    if (this.socket) {
+      try {
+        await this.socket.end(undefined);
+      } catch {}
+      this.socket = null;
+    }
 
     this.manualDisconnect = false;
     this.connecting = this.doConnect()
@@ -449,7 +456,7 @@ export class WhatsAppAdapter implements PlatformAdapter {
 
     const socket = mod.makeWASocket({
       auth: state,
-      browser: ['Chrome', 'Desktop', '1.0.0'],
+      browser: (mod as any).Browsers?.ubuntu?.('Chrome') ?? ['Ubuntu', 'Chrome', '22.04.4'],
       logger: this.options.logger,
       syncFullHistory: false,
       markOnlineOnConnect: true,
@@ -507,18 +514,63 @@ export class WhatsAppAdapter implements PlatformAdapter {
   }
 
   async requestPairingCode(phoneNumber: string): Promise<string> {
-    const cleanPhone = phoneNumber.replace(/\D/g, '');
-    if (!cleanPhone) {
-      throw new Error('Nomor telepon tidak valid.');
+    let cleanPhone = phoneNumber.replace(/\D/g, '');
+    if (cleanPhone.startsWith('0')) {
+      cleanPhone = '62' + cleanPhone.slice(1);
     }
+    if (cleanPhone.length < 8 || cleanPhone.length > 15) {
+      throw new Error('Nomor telepon harus dalam format internasional yang valid (mis. 628123456789).');
+    }
+
+    if (this.status === 'connected') {
+      throw new Error('WhatsApp sudah terhubung. Putuskan sesi terlebih dahulu jika ingin pairing ulang.');
+    }
+
+    if (this.socket && (this.status === 'disconnected' || this.status === 'error')) {
+      await this.disconnect();
+    }
+
     if (!this.socket) {
       await this.connect();
     }
-    const socket = this.socket as unknown as { requestPairingCode?: (phone: string) => Promise<string> };
+
+    const socket = this.socket as any;
     if (typeof socket?.requestPairingCode !== 'function') {
-      throw new Error('Versi onigis saat ini tidak menyediakan fungsi requestPairingCode.');
+      throw new Error(`Modul "${this.moduleName}" tidak menyediakan fungsi requestPairingCode.`);
     }
-    return socket.requestPairingCode(cleanPhone);
+
+    // Tunggu websocket siap menerima stanza sebelum meminta kode pairing (maks 8 detik)
+    if (!this.qr && !socket.ws?.isOpen) {
+      await new Promise<void>((resolve) => {
+        let attempts = 0;
+        const interval = setInterval(() => {
+          attempts += 1;
+          if (this.qr || socket.ws?.isOpen || attempts >= 25) {
+            clearInterval(interval);
+            resolve();
+          }
+        }, 300);
+      });
+    }
+
+    // Beri buffer sejenak agar noise handshake selesai
+    await new Promise((r) => setTimeout(r, 1000));
+
+    try {
+      const rawCode = await socket.requestPairingCode(cleanPhone);
+      if (typeof rawCode === 'string') {
+        const cleanCode = rawCode.replace(/[^A-Za-z0-9]/g, '').toUpperCase();
+        if (cleanCode.length === 8) {
+          return `${cleanCode.slice(0, 4)}-${cleanCode.slice(4)}`;
+        }
+        return rawCode;
+      }
+      return String(rawCode);
+    } catch (err: unknown) {
+      this.options.logger.error({ err, cleanPhone }, 'Gagal meminta pairing code dari server WhatsApp');
+      const msg = err instanceof Error ? err.message : String(err);
+      throw new Error(msg || 'Server WhatsApp menolak permintaan pairing code. Coba gunakan scan QR atau periksa nomor Anda.');
+    }
   }
 
   async send(chatId: string, content: OutgoingContent): Promise<void> {

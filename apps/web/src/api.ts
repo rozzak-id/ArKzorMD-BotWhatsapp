@@ -130,7 +130,15 @@ export const api = {
         body: JSON.stringify({ personaId }),
       },
     ),
-  // WhatsApp Pairing Code
+  // WhatsApp Connection & Pairing
+  connectWhatsApp: () =>
+    request<{ ok: boolean; status: string; qr?: string | null }>('/api/whatsapp/connect', {
+      method: 'POST',
+    }),
+  disconnectWhatsApp: () =>
+    request<{ ok: boolean; status: string }>('/api/whatsapp/disconnect', {
+      method: 'POST',
+    }),
   requestPairingCode: (phoneNumber: string) =>
     request<{ ok: boolean; code: string }>('/api/whatsapp/pairing-code', {
       method: 'POST',

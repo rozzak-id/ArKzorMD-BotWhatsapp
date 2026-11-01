@@ -54,6 +54,8 @@ export function SetupPage({ status, onFinish }: SetupPageProps) {
   const [waMethod, setWaMethod] = useState<'qr' | 'code'>('qr');
   const [waPhone, setWaPhone] = useState('');
   const [pairingCode, setPairingCode] = useState<string | null>(null);
+  const [copiedCode, setCopiedCode] = useState(false);
+  const [connectingWa, setConnectingWa] = useState(false);
 
   // Step 4: Owner Verification
   const [ownerPhone, setOwnerPhone] = useState('');
@@ -125,6 +127,45 @@ export function SetupPage({ status, onFinish }: SetupPageProps) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function handleConnectWhatsApp() {
+    setConnectingWa(true);
+    setError(null);
+    try {
+      await api.connectWhatsApp();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setConnectingWa(false);
+    }
+  }
+
+  async function handleDisconnectWhatsApp() {
+    if (!confirm('Putuskan sesi WhatsApp ini?')) return;
+    setConnectingWa(true);
+    setError(null);
+    try {
+      await api.disconnectWhatsApp();
+      setPairingCode(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setConnectingWa(false);
+    }
+  }
+
+  async function handleCopyPairingCode() {
+    if (!pairingCode) return;
+    const clean = pairingCode.replace('-', '');
+    try {
+      await navigator.clipboard.writeText(clean);
+      setCopiedCode(true);
+      setTimeout(() => setCopiedCode(false), 2500);
+    } catch {
+      setCopiedCode(true);
+      setTimeout(() => setCopiedCode(false), 2500);
     }
   }
 
@@ -380,50 +421,131 @@ export function SetupPage({ status, onFinish }: SetupPageProps) {
               <p class="small muted" style={{ marginTop: '0.5rem' }}>
                 Sesi WhatsApp aktif tersimpan di server.
               </p>
+              <button
+                type="button"
+                class="btn btn-secondary btn-sm"
+                style={{ marginTop: '1rem' }}
+                onClick={handleDisconnectWhatsApp}
+                disabled={connectingWa}
+              >
+                {connectingWa ? 'Memutuskan…' : 'Putuskan / Ganti Akun WhatsApp'}
+              </button>
             </div>
           ) : waMethod === 'qr' ? (
             status?.connection.qr ? (
-              <div>
+              <div style={{ textAlign: 'center' }}>
                 <PairingQr value={status.connection.qr} />
-                <p style={{ textAlign: 'center' }} class="muted small">
-                  Buka WhatsApp di HP → Perangkat Tertaut → Tautkan Perangkat → Pindai QR di atas.
+                <p class="muted small" style={{ marginTop: '0.5rem' }}>
+                  Buka WhatsApp di HP → <strong>Perangkat Tertaut</strong> → <strong>Tautkan Perangkat</strong> → Pindai QR di atas.
+                </p>
+                <div style={{ marginTop: '0.75rem' }}>
+                  <button
+                    type="button"
+                    class="btn btn-secondary btn-sm"
+                    onClick={async () => {
+                      await handleDisconnectWhatsApp().catch(() => {});
+                      await handleConnectWhatsApp();
+                    }}
+                    disabled={connectingWa}
+                  >
+                    {connectingWa ? 'Memuat ulang…' : 'Muat Ulang QR'}
+                  </button>
+                </div>
+              </div>
+            ) : status?.connection.status === 'connecting' ? (
+              <div style={{ textAlign: 'center', padding: '2rem' }}>
+                <div class="qr-placeholder" aria-label="Menunggu QR">
+                  <span>QR</span>
+                  <p>Menghubungkan ke WhatsApp dan menunggu QR dari server…</p>
+                </div>
+                <p class="muted small" style={{ marginTop: '0.5rem' }}>
+                  QR akan muncul di sini secara otomatis.
                 </p>
               </div>
             ) : (
-              <div style={{ textAlign: 'center', padding: '2rem' }}>
-                <p class="muted">
-                  {status?.connection.mode === 'mock'
-                    ? 'Mode mock aktif — koneksi WhatsApp disimulasikan.'
-                    : 'Menunggu QR dari server WhatsApp…'}
+              <div style={{ textAlign: 'center', padding: '1.5rem' }}>
+                <div class="qr-placeholder" aria-label="WhatsApp belum terhubung">
+                  <span>QR</span>
+                  <p>
+                    {status?.connection.lastError
+                      ? `Koneksi terputus: ${status.connection.lastError}`
+                      : 'WhatsApp saat ini belum terhubung.'}
+                  </p>
+                </div>
+                <div style={{ marginTop: '1rem' }}>
+                  <button
+                    type="button"
+                    class="btn btn-primary"
+                    onClick={handleConnectWhatsApp}
+                    disabled={connectingWa}
+                  >
+                    {connectingWa ? 'Menghubungkan…' : 'Hubungkan & Tampilkan QR'}
+                  </button>
+                </div>
+                <p class="muted small" style={{ marginTop: '0.5rem' }}>
+                  Klik tombol di atas untuk memulai koneksi dan menampilkan QR code pairing.
                 </p>
               </div>
             )
           ) : (
             <div>
               {pairingCode ? (
-                <div style={{ textAlign: 'center', padding: '1.5rem', background: 'var(--surface-sunken)', borderRadius: '8px' }}>
-                  <p class="muted small">Kode Pairing 8 Digit:</p>
-                  <div style={{ fontSize: '2rem', fontWeight: 700, letterSpacing: '0.2em', margin: '0.5rem 0' }}>
+                <div style={{ textAlign: 'center', padding: '1.5rem', background: 'var(--surface-sunken)', borderRadius: '8px', border: '1px solid var(--border)' }}>
+                  <p class="muted small" style={{ marginBottom: '0.25rem' }}>Kode Pairing 8 Digit WhatsApp:</p>
+                  <div style={{ fontSize: '2.4rem', fontWeight: 800, letterSpacing: '0.25em', fontFamily: 'monospace', color: 'var(--color-primary, #3b82f6)', margin: '0.5rem 0' }}>
                     {pairingCode}
                   </div>
-                  <p class="muted small">
-                    Di HP: WhatsApp → Perangkat Tertaut → Tautkan dengan nomor telepon saja.
-                  </p>
+                  <div style={{ display: 'flex', justifyContent: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
+                    <button
+                      type="button"
+                      class="btn btn-primary btn-sm"
+                      onClick={handleCopyPairingCode}
+                    >
+                      {copiedCode ? '✓ Kode Tersalin!' : 'Salin Kode'}
+                    </button>
+                    <button
+                      type="button"
+                      class="btn btn-secondary btn-sm"
+                      onClick={() => setPairingCode(null)}
+                    >
+                      Minta Kode Baru
+                    </button>
+                  </div>
+                  <div style={{ textAlign: 'left', marginTop: '1rem', paddingTop: '0.75rem', borderTop: '1px solid var(--border)' }}>
+                    <p class="small" style={{ fontWeight: 600, marginBottom: '0.25rem' }}>Langkah di WhatsApp:</p>
+                    <ol class="small muted" style={{ paddingLeft: '1.2rem', margin: 0, lineHeight: 1.6 }}>
+                      <li>Buka WhatsApp di ponsel → Menu ⋮ / Pengaturan → <strong>Perangkat Tertaut</strong>.</li>
+                      <li>Ketuk <strong>Tautkan Perangkat</strong>.</li>
+                      <li>Pilih <strong>Tautkan dengan nomor telepon saja</strong> di bagian bawah.</li>
+                      <li>Ketik 8 karakter kode di atas.</li>
+                    </ol>
+                  </div>
                 </div>
               ) : (
-                <form onSubmit={handlePairingCodeRequest} style={{ display: 'flex', gap: '0.5rem' }}>
-                  <input
-                    type="text"
-                    class="input"
-                    style={{ flex: 1 }}
-                    placeholder="Nomor HP WhatsApp (contoh 628123456789)"
-                    value={waPhone}
-                    onInput={(e) => setWaPhone((e.target as HTMLInputElement).value)}
-                    required
-                  />
-                  <button type="submit" class="btn btn-primary" disabled={loading || !waPhone}>
-                    Minta Kode
+                <form onSubmit={handlePairingCodeRequest} style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                  <label>
+                    <span class="small muted">Nomor HP WhatsApp (dengan kode negara):</span>
+                    <input
+                      type="tel"
+                      class="input"
+                      style={{ width: '100%', marginTop: '0.25rem' }}
+                      placeholder="Contoh: 628123456789 atau 08123456789"
+                      value={waPhone}
+                      onInput={(e) => setWaPhone((e.target as HTMLInputElement).value)}
+                      required
+                    />
+                  </label>
+                  {waPhone.trim().startsWith('0') && (
+                    <p class="muted small" style={{ margin: '-0.25rem 0 0.25rem' }}>
+                      Nomor akan otomatis dikonversi ke format internasional: <strong>+62{waPhone.trim().slice(1)}</strong>
+                    </p>
+                  )}
+                  <button type="submit" class="btn btn-primary" disabled={loading || !waPhone.trim()}>
+                    {loading ? 'Meminta kode dari server WhatsApp…' : 'Dapatkan Pairing Code'}
                   </button>
+                  <p class="muted small">
+                    Permintaan pairing code akan otomatis menginisialisasi socket WhatsApp.
+                  </p>
                 </form>
               )}
             </div>
