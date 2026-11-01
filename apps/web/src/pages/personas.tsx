@@ -1,6 +1,6 @@
 import { useState } from 'preact/hooks';
 import { api } from '../api';
-import { Badge, Card, Empty, ErrorNote, Loading } from '../components';
+import { Badge, Card, Empty, ErrorNote, Icons, Loading } from '../components';
 import { useAsync } from '../hooks';
 
 export function PersonasPage() {
@@ -13,7 +13,7 @@ export function PersonasPage() {
     setSuccessNote(null);
     try {
       await api.activatePersona(id);
-      setSuccessNote(`Persona ${id} berhasil diaktifkan.`);
+      setSuccessNote(`Persona "${id}" berhasil diaktifkan sebagai karakter default bot.`);
       await reload();
     } catch (err) {
       setActionError(err instanceof Error ? err.message : String(err));
@@ -56,14 +56,18 @@ export function PersonasPage() {
 
   return (
     <Card
-      title="Daftar Persona"
+      title="Koleksi Persona Karakter AI"
+      subtitle="Karakter, gaya bahasa, greeting, dan aturan topik percakapan bot"
+      icon={<Icons.Sparkles width={16} height={16} />}
       action={
-        <div class="row gap-sm">
-          <button class="btn btn-ghost" type="button" onClick={handleExport} title="Ekspor persona ke JSON">
-            Ekspor JSON
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <button class="btn btn-secondary btn-sm" type="button" onClick={handleExport} title="Ekspor persona ke JSON">
+            <Icons.Copy width={14} height={14} />
+            <span>Ekspor JSON</span>
           </button>
-          <label class="btn btn-ghost" style={{ cursor: 'pointer' }} title="Impor persona dari file JSON">
-            Impor JSON
+          <label class="btn btn-secondary btn-sm" style={{ cursor: 'pointer' }} title="Impor persona dari file JSON">
+            <Icons.ArrowUpRight width={14} height={14} />
+            <span>Impor JSON</span>
             <input
               type="file"
               accept=".json"
@@ -71,64 +75,99 @@ export function PersonasPage() {
               onChange={handleImportFile}
             />
           </label>
-          <button class="btn btn-ghost" type="button" onClick={reload}>
-            Muat ulang
+          <button class="btn btn-secondary btn-sm" type="button" onClick={reload}>
+            <Icons.Refresh width={14} height={14} />
+            <span>Segarkan</span>
           </button>
         </div>
       }
     >
       <ErrorNote message={error || actionError} />
-      {successNote && <div class="badge badge-ok" style={{ marginBottom: '1rem', padding: '0.5rem 1rem' }}>{successNote}</div>}
-      {loading && <Loading />}
-      {!loading && data?.personas.length === 0 && <Empty>Belum ada persona.</Empty>}
+      {successNote && (
+        <div class="banner ok" style={{ marginBottom: '1.25rem' }}>
+          <Icons.CheckCircle width={16} height={16} />
+          <span>{successNote}</span>
+        </div>
+      )}
+      {loading && <Loading text="Memuat koleksi persona…" />}
+      {!loading && (!data?.personas || data.personas.length === 0) && (
+        <Empty title="Belum Ada Persona Tersimpan">
+          Gunakan tombol Impor JSON atau buat persona baru di server.
+        </Empty>
+      )}
       <div class="grid grid-2">
-        {data?.personas.map((persona) => (
-          <article class="persona" key={persona.id}>
-            <header class="row-between">
-              <div>
-                <h3>{persona.name}</h3>
-                <code>{persona.id}</code>
-              </div>
-              <div>
-                {data.active === persona.id ? (
-                  <Badge tone="ok">Aktif</Badge>
-                ) : (
-                  <button
-                    class="btn btn-sm btn-outline"
-                    type="button"
-                    onClick={() => handleActivate(persona.id)}
-                  >
-                    Aktifkan
-                  </button>
-                )}
-              </div>
-            </header>
-            <p class="muted">{persona.style}</p>
-            <dl class="kv kv-tight">
-              <div>
-                <dt>Bahasa</dt>
-                <dd>{persona.language}</dd>
-              </div>
-              <div>
-                <dt>Typing delay</dt>
-                <dd>{persona.typingDelay}</dd>
-              </div>
-            </dl>
-            {persona.forbiddenTopics.length > 0 && (
-              <div class="chips">
-                {persona.forbiddenTopics.map((topic) => (
-                  <span class="chip" key={topic}>
-                    {topic}
-                  </span>
-                ))}
-              </div>
-            )}
-            {persona.greeting && <p class="quote">“{persona.greeting}”</p>}
-          </article>
-        ))}
+        {data?.personas.map((persona) => {
+          const isActive = data.active === persona.id;
+          return (
+            <article
+              class={`persona ${isActive ? 'card-interactive' : ''}`}
+              key={persona.id}
+              style={isActive ? { borderColor: 'var(--accent)', boxShadow: '0 0 16px var(--accent-glow)' } : {}}
+            >
+              <header class="row-between">
+                <div>
+                  <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span>{persona.name}</span>
+                    {isActive && (
+                      <Badge tone="ok" size="sm" icon={<Icons.Check width={10} height={10} />}>
+                        Aktif
+                      </Badge>
+                    )}
+                  </h3>
+                  <code>{persona.id}</code>
+                </div>
+                <div>
+                  {!isActive && (
+                    <button
+                      class="btn btn-primary btn-sm"
+                      type="button"
+                      onClick={() => handleActivate(persona.id)}
+                    >
+                      Pilih Persona
+                    </button>
+                  )}
+                </div>
+              </header>
+
+              <p class="muted small" style={{ margin: '4px 0' }}>
+                Gaya: <strong>{persona.style}</strong>
+              </p>
+
+              <dl class="kv kv-tight">
+                <div>
+                  <dt>Bahasa</dt>
+                  <dd>{persona.language.toUpperCase()}</dd>
+                </div>
+                <div>
+                  <dt>Typing Delay</dt>
+                  <dd>{persona.typingDelay}</dd>
+                </div>
+              </dl>
+
+              {persona.forbiddenTopics.length > 0 && (
+                <div>
+                  <p class="small muted" style={{ margin: '4px 0 2px', fontWeight: 600 }}>Topik Dilarang:</p>
+                  <div class="chips">
+                    {persona.forbiddenTopics.map((topic) => (
+                      <span class="chip" key={topic}>
+                        {topic}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {persona.greeting && (
+                <p class="quote small" style={{ margin: '4px 0 0' }}>
+                  “{persona.greeting}”
+                </p>
+              )}
+            </article>
+          );
+        })}
       </div>
-      <p class="muted" style={{ marginTop: '1.5rem' }}>
-        Perubahan dan aktivasi persona berlaku instan tanpa perlu restart bot.
+      <p class="muted small" style={{ marginTop: '1.5rem', textAlign: 'center' }}>
+        Perubahan dan aktivasi persona berlaku instan tanpa perlu restart proses server.
       </p>
     </Card>
   );

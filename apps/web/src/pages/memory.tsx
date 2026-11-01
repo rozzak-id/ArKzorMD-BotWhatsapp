@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'preact/hooks';
 import { api } from '../api';
-import { Badge, Card, Empty, ErrorNote, Loading } from '../components';
+import { Badge, Card, Empty, ErrorNote, Icons, Loading } from '../components';
 import { formatTime, shortJid } from '../format';
 
 interface MemoryNote {
@@ -15,7 +15,7 @@ export function MemoryPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [error, setError] = useState<string | null>(null);
-  const [adminToken, setAdminToken] = useState(() => localStorage.getItem('arkzormd_admin_token') || '');
+  const adminToken = localStorage.getItem('arkzor.admin_token') || localStorage.getItem('arkzormd_admin_token') || '';
   const [deletingId, setDeletingId] = useState<number | null>(null);
 
   const loadNotes = async () => {
@@ -36,7 +36,7 @@ export function MemoryPage() {
   }, []);
 
   const handleDelete = async (id: number) => {
-    if (!confirm(`Hapus catatan memori #${id}?`)) return;
+    if (!confirm(`Hapus catatan memori #${id}? Tindakan ini permanen.`)) return;
     setDeletingId(id);
     try {
       await api.deleteMemory(id, adminToken);
@@ -57,29 +57,33 @@ export function MemoryPage() {
   return (
     <div class="stack">
       <Card
-        title="Memori Jangka Panjang"
+        title="Pusat Memori Jangka Panjang AI"
+        subtitle="Fakta konteks dan preferensi pengguna yang disimpan otomatis oleh agen AI"
+        icon={<Icons.Cpu width={16} height={16} />}
         action={
-          <button class="btn btn-secondary" onClick={loadNotes} disabled={loading}>
-            {loading ? 'Memuat…' : 'Segarkan'}
+          <button class="btn btn-secondary btn-sm" onClick={loadNotes} disabled={loading}>
+            <Icons.Refresh width={14} height={14} />
+            <span>{loading ? 'Memuat…' : 'Segarkan'}</span>
           </button>
         }
       >
-        <p class="muted">
-          Catatan fakta dan preferensi pengguna yang disimpan AI lewat <code>memory.save_note</code>.
+        <p class="muted small" style={{ marginBottom: '1rem' }}>
+          Agen AI mengingat preferensi penting pengguna lewat tool <code>memory.save_note</code> untuk
+          menghadirkan percakapan berkelanjutan yang personal.
         </p>
 
-        <div style={{ marginTop: '1rem', display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
           <input
             type="text"
             class="input"
-            style={{ maxWidth: '320px' }}
-            placeholder="Cari nomor/JID atau isi catatan…"
+            style={{ maxWidth: '360px', width: '100%' }}
+            placeholder="Cari nomor JID atau isi catatan memori…"
             value={search}
             onInput={(e) => setSearch((e.target as HTMLInputElement).value)}
           />
-          <span class="muted" style={{ fontSize: '0.875rem' }}>
-            Total: <strong>{notes.length}</strong> catatan
-          </span>
+          <Badge tone="accent" size="sm">
+            Total {notes.length} Catatan
+          </Badge>
         </div>
       </Card>
 
@@ -87,48 +91,62 @@ export function MemoryPage() {
 
       {loading ? (
         <Card>
-          <Loading />
+          <Loading text="Memuat catatan memori dari database…" />
         </Card>
       ) : filteredNotes.length === 0 ? (
         <Card>
-          <Empty>{search ? 'Tidak ada catatan yang cocok dengan pencarian.' : 'Belum ada catatan memori tersimpan.'}</Empty>
+          <Empty title="Tidak Ada Catatan Ditemukan">
+            {search ? 'Tidak ada catatan yang cocok dengan kata kunci pencarian.' : 'Belum ada catatan memori tersimpan.'}
+          </Empty>
         </Card>
       ) : (
-        <Card title={`Daftar Catatan (${filteredNotes.length})`}>
-          <table class="table">
-            <thead>
-              <tr>
-                <th>ID</th>
-                <th>Pengguna</th>
-                <th>Catatan</th>
-                <th>Waktu</th>
-                <th>Aksi</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredNotes.map((item) => (
-                <tr key={item.id}>
-                  <td>
-                    <Badge tone="neutral">#{item.id}</Badge>
-                  </td>
-                  <td>
-                    <code title={item.userJid}>{shortJid(item.userJid)}</code>
-                  </td>
-                  <td>{item.note}</td>
-                  <td class="muted">{formatTime(item.createdAt)}</td>
-                  <td>
-                    <button
-                      class="btn btn-danger btn-sm"
-                      disabled={deletingId === item.id}
-                      onClick={() => handleDelete(item.id)}
-                    >
-                      {deletingId === item.id ? '…' : 'Hapus'}
-                    </button>
-                  </td>
+        <Card
+          title={`Catatan Memori Tersimpan (${filteredNotes.length})`}
+          subtitle="Daftar entri memori yang relevan"
+          icon={<Icons.Cpu width={16} height={16} />}
+        >
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th style={{ width: '80px' }}>ID</th>
+                  <th>Kontak Pengguna</th>
+                  <th>Catatan Fakta / Preferensi</th>
+                  <th>Waktu Simpan</th>
+                  <th style={{ width: '90px' }}>Aksi</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {filteredNotes.map((item) => (
+                  <tr key={item.id}>
+                    <td>
+                      <Badge tone="neutral" size="sm">#{item.id}</Badge>
+                    </td>
+                    <td>
+                      <code title={item.userJid} style={{ fontWeight: 600 }}>{shortJid(item.userJid)}</code>
+                    </td>
+                    <td>
+                      <span style={{ color: 'var(--text)' }}>{item.note}</span>
+                    </td>
+                    <td class="muted small" style={{ fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
+                      {formatTime(item.createdAt)}
+                    </td>
+                    <td>
+                      <button
+                        class="btn btn-danger btn-sm"
+                        disabled={deletingId === item.id}
+                        onClick={() => handleDelete(item.id)}
+                        title="Hapus catatan memori ini"
+                      >
+                        <Icons.X width={13} height={13} />
+                        <span>{deletingId === item.id ? '…' : 'Hapus'}</span>
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </Card>
       )}
     </div>

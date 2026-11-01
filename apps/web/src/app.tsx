@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'preact/hooks';
-import { Badge, StatusPill } from './components';
+import { Badge, Icons, StatusPill } from './components';
 import { useLiveStatus } from './hooks';
 import type { StatusResponse } from './types';
 import { ApprovalsPage } from './pages/approvals';
@@ -34,34 +34,35 @@ interface NavItem {
   id: RouteId;
   label: string;
   badge?: string;
+  icon: keyof typeof Icons;
 }
 
 const NAV_GROUPS: Array<{ title: string; items: NavItem[] }> = [
   {
     title: 'Utama',
     items: [
-      { id: 'dashboard', label: 'Dashboard' },
-      { id: 'connection', label: 'Koneksi WhatsApp' },
-      { id: 'approvals', label: 'Persetujuan' },
+      { id: 'dashboard', label: 'Dashboard', icon: 'Activity' },
+      { id: 'connection', label: 'Koneksi WhatsApp', icon: 'WhatsApp' },
+      { id: 'approvals', label: 'Persetujuan', icon: 'ShieldCheck' },
     ],
   },
   {
     title: 'Kelola',
     items: [
-      { id: 'personas', label: 'Persona' },
-      { id: 'users', label: 'Pengguna & Role' },
-      { id: 'groups', label: 'Grup' },
-      { id: 'tools', label: 'Tools & Izin' },
-      { id: 'memory', label: 'Memori' },
+      { id: 'personas', label: 'Persona AI', icon: 'Sparkles' },
+      { id: 'users', label: 'Pengguna & Role', icon: 'Users' },
+      { id: 'groups', label: 'Grup WhatsApp', icon: 'Users' },
+      { id: 'tools', label: 'Tools & Izin', icon: 'Tools' },
+      { id: 'memory', label: 'Memori Bot', icon: 'Cpu' },
     ],
   },
   {
     title: 'Sistem',
     items: [
-      { id: 'audit', label: 'Audit Log' },
-      { id: 'settings', label: 'Pengaturan' },
-      { id: 'platforms', label: 'Platform' },
-      { id: 'setup', label: 'Setup Wizard', badge: 'M3' },
+      { id: 'audit', label: 'Audit Log', icon: 'Clock' },
+      { id: 'settings', label: 'Pengaturan', icon: 'Settings' },
+      { id: 'platforms', label: 'Platform Adapter', icon: 'Robot' },
+      { id: 'setup', label: 'Setup Wizard', badge: 'Wizard', icon: 'Key' },
     ],
   },
 ];
@@ -157,11 +158,11 @@ export function App() {
       <aside class="sidebar">
         <a class="brand" href="#/dashboard">
           <span class="brand-mark" aria-hidden="true">
-            A
+            <Icons.Robot width={20} height={20} />
           </span>
           <span>
             ArKzorMD
-            <small>Bot AI WhatsApp</small>
+            <small>WhatsApp AI Console</small>
           </span>
         </a>
 
@@ -169,44 +170,63 @@ export function App() {
           {NAV_GROUPS.map((group) => (
             <div class="nav-group" key={group.title}>
               <p class="nav-group-title">{group.title}</p>
-              {group.items.map((item) => (
-                <a
-                  key={item.id}
-                  class={`nav-link ${route === item.id ? 'active' : ''}`}
-                  href={`#/${item.id}`}
-                  aria-current={route === item.id ? 'page' : undefined}
-                >
-                  <span>{item.label}</span>
-                  {item.badge && <span class="nav-badge">{item.badge}</span>}
-                </a>
-              ))}
+              {group.items.map((item) => {
+                const IconComponent = Icons[item.icon];
+                return (
+                  <a
+                    key={item.id}
+                    class={`nav-link ${route === item.id ? 'active' : ''}`}
+                    href={`#/${item.id}`}
+                    aria-current={route === item.id ? 'page' : undefined}
+                  >
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '10px' }}>
+                      <span style={{ display: 'grid', placeItems: 'center', opacity: route === item.id ? 1 : 0.7 }}>
+                        <IconComponent width={16} height={16} />
+                      </span>
+                      <span>{item.label}</span>
+                    </span>
+                    {item.badge && <span class="nav-badge">{item.badge}</span>}
+                  </a>
+                );
+              })}
             </div>
           ))}
         </nav>
 
         <div class="sidebar-foot">
-          <p>
-            v{status?.version ?? '0.1.0'} · M0 fondasi
+          <p style={{ fontWeight: 600 }}>v{status?.version ?? '0.2.0'}</p>
+          <p class="muted small">
+            AI: <code>{status?.ai.provider ?? 'mock'}</code> ({status?.ai.model ?? 'default'})
           </p>
-          <p class="muted small">{status?.ai.provider ?? 'mock'} provider</p>
         </div>
       </aside>
 
       <div class="main">
         <header class="topbar">
           <div>
-            <p class="eyebrow">ArKzorMD</p>
+            <p class="eyebrow">ArKzorMD Console</p>
             <h1>{meta?.label ?? 'Dashboard'}</h1>
           </div>
           <div class="topbar-actions">
-            {error && <Badge tone="danger">API offline</Badge>}
+            {error && <Badge tone="danger">API Offline</Badge>}
             <StatusPill status={status?.connection.status ?? null} />
             <button
-              class="btn btn-ghost"
+              class="btn btn-secondary btn-sm"
               type="button"
               onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+              title={`Beralih ke tema ${theme === 'dark' ? 'terang' : 'gelap'}`}
             >
-              Tema: {theme === 'dark' ? 'Gelap' : 'Terang'}
+              {theme === 'dark' ? (
+                <>
+                  <Icons.Sun width={15} height={15} />
+                  <span>Terang</span>
+                </>
+              ) : (
+                <>
+                  <Icons.Moon width={15} height={15} />
+                  <span>Gelap</span>
+                </>
+              )}
             </button>
           </div>
         </header>

@@ -1,5 +1,5 @@
 import { api } from '../api';
-import { Card, Empty, ErrorNote, Loading } from '../components';
+import { Card, Empty, ErrorNote, Icons, Loading } from '../components';
 import { formatJson, formatTime, shortJid } from '../format';
 import { useAsync } from '../hooks';
 
@@ -16,52 +16,63 @@ export function AuditPage() {
 
   return (
     <Card
-      title="Audit Log"
+      title="Audit Log & Rekam Jejak Sistem"
+      subtitle="Catatan eksekusi tools, keputusan otorisasi, dan mutasi pengaturan bot"
+      icon={<Icons.Clock width={16} height={16} />}
       action={
-        <div class="row gap-sm">
-          <button class="btn btn-ghost" type="button" onClick={handleExportCsv} title="Unduh CSV log">
-            Ekspor CSV
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <button class="btn btn-secondary btn-sm" type="button" onClick={handleExportCsv} title="Unduh CSV log">
+            <Icons.Copy width={14} height={14} />
+            <span>Ekspor CSV</span>
           </button>
-          <button class="btn btn-ghost" type="button" onClick={handleExportJson} title="Unduh JSON log">
-            Ekspor JSON
+          <button class="btn btn-secondary btn-sm" type="button" onClick={handleExportJson} title="Unduh JSON log">
+            <Icons.ArrowUpRight width={14} height={14} />
+            <span>Ekspor JSON</span>
           </button>
-          <button class="btn btn-ghost" type="button" onClick={reload}>
-            Muat ulang
+          <button class="btn btn-secondary btn-sm" type="button" onClick={reload}>
+            <Icons.Refresh width={14} height={14} />
+            <span>Segarkan</span>
           </button>
         </div>
       }
     >
       <ErrorNote message={error} />
-      {loading && <Loading />}
-      {!loading && data?.entries.length === 0 && <Empty>Belum ada entri audit.</Empty>}
-      {data && data.entries.length > 0 && (
+      {loading && <Loading text="Memuat riwayat audit log…" />}
+      {!loading && (!data?.entries || data.entries.length === 0) && (
+        <Empty title="Belum Ada Rekam Jejak Audit">
+          Belum ada aktivitas tercatat di tabel audit database.
+        </Empty>
+      )}
+      {data && data.entries && data.entries.length > 0 && (
         <div class="table-wrap">
           <table>
             <thead>
               <tr>
-                <th>Waktu</th>
-                <th>Aktor</th>
-                <th>Aksi</th>
-                <th>Parameter</th>
+                <th>Waktu Eksekusi</th>
+                <th>Aktor / Pemohon</th>
+                <th>Aksi / Peristiwa</th>
+                <th>Parameter Detail</th>
               </tr>
             </thead>
             <tbody>
               {data.entries.map((entry) => (
                 <tr key={entry.id}>
-                  <td class="muted">{formatTime(entry.createdAt)}</td>
+                  <td class="muted" style={{ fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
+                    {formatTime(entry.createdAt)}
+                  </td>
                   <td>
                     {entry.actorJid ? (
                       <code title={entry.actorJid}>{shortJid(entry.actorJid)}</code>
                     ) : (
-                      'sistem'
+                      <span class="muted">sistem</span>
                     )}
                   </td>
                   <td>
-                    <strong>{entry.action}</strong>
+                    <strong style={{ color: 'var(--text)' }}>{entry.action}</strong>
                   </td>
                   <td>
                     <details>
-                      <summary>lihat</summary>
+                      <summary>Lihat Payload JSON</summary>
                       <pre class="pre-tight">{formatJson(entry.params)}</pre>
                     </details>
                   </td>
@@ -71,8 +82,8 @@ export function AuditPage() {
           </table>
         </div>
       )}
-      <p class="muted" style={{ marginTop: '1.5rem' }}>
-        Rahasia disaring (redacted) secara otomatis sebelum masuk log audit demi keamanan.
+      <p class="muted small" style={{ marginTop: '1.25rem' }}>
+        * Kunci API, token, dan data rahasia otomatis disaring (redacted) oleh Audit Engine sebelum disimpan di SQLite.
       </p>
     </Card>
   );

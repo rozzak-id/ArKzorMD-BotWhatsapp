@@ -1,5 +1,5 @@
 import { api } from '../api';
-import { Badge, Card, Empty, ErrorNote, Loading, type Tone } from '../components';
+import { Badge, Card, Empty, ErrorNote, Icons, Loading, type Tone } from '../components';
 import { formatTime, shortJid } from '../format';
 import { useAsync } from '../hooks';
 import type { Role } from '../types';
@@ -15,55 +15,72 @@ export function UsersPage() {
 
   return (
     <Card
-      title="Pengguna & role"
+      title="Daftar Pengguna & Pembagian Peran"
+      subtitle="Manajemen otoritas pengguna WhatsApp, peran L0/L1, dan status akun"
+      icon={<Icons.Users width={16} height={16} />}
       action={
-        <button class="btn btn-ghost" type="button" onClick={reload}>
-          Muat ulang
+        <button class="btn btn-secondary btn-sm" type="button" onClick={reload}>
+          <Icons.Refresh width={14} height={14} />
+          <span>Segarkan</span>
         </button>
       }
     >
       <ErrorNote message={error} />
-      {loading && <Loading />}
-      {!loading && data?.users.length === 0 && <Empty>Belum ada pengguna terdaftar.</Empty>}
-      {data && data.users.length > 0 && (
+      {loading && <Loading text="Memuat daftar pengguna…" />}
+      {!loading && (!data?.users || data.users.length === 0) && (
+        <Empty title="Belum Ada Pengguna Terdaftar">
+          Pengguna yang mengirim pesan ke bot WhatsApp akan otomatis tercatat di sini.
+        </Empty>
+      )}
+      {data && data.users && data.users.length > 0 && (
         <div class="table-wrap">
           <table>
             <thead>
               <tr>
-                <th>JID</th>
-                <th>Nama</th>
-                <th>Role</th>
-                <th>Status</th>
-                <th>Kuota</th>
-                <th>Diperbarui</th>
+                <th>WhatsApp JID</th>
+                <th>Nama Kontak</th>
+                <th>Peran Otoritas</th>
+                <th>Status Akun</th>
+                <th>Kuota Harian</th>
+                <th>Aktivitas Terakhir</th>
               </tr>
             </thead>
             <tbody>
               {data.users.map((user) => (
                 <tr key={user.jid}>
                   <td>
-                    <code title={user.jid}>{shortJid(user.jid)}</code>
-                  </td>
-                  <td>{user.name ?? '—'}</td>
-                  <td>
-                    <Badge tone={ROLE_TONE[user.role]}>{user.role}</Badge>
+                    <code title={user.jid} style={{ fontWeight: 600 }}>
+                      {shortJid(user.jid)}
+                    </code>
                   </td>
                   <td>
-                    <Badge tone={user.status === 'active' ? 'ok' : user.status === 'blocked' ? 'danger' : 'warn'}>
+                    <span style={{ fontWeight: user.name ? 600 : 400 }}>{user.name ?? '—'}</span>
+                  </td>
+                  <td>
+                    <Badge tone={ROLE_TONE[user.role]} size="sm">
+                      {user.role.toUpperCase()}
+                    </Badge>
+                  </td>
+                  <td>
+                    <Badge
+                      tone={user.status === 'active' ? 'ok' : user.status === 'blocked' ? 'danger' : 'warn'}
+                      size="sm"
+                    >
                       {user.status}
                     </Badge>
                   </td>
-                  <td>{user.quotaDaily ?? '—'}</td>
-                  <td class="muted">{formatTime(user.updatedAt)}</td>
+                  <td>{user.quotaDaily ?? <span class="muted">Tanpa Batas</span>}</td>
+                  <td class="muted" style={{ fontVariantNumeric: 'tabular-nums' }}>
+                    {formatTime(user.updatedAt)}
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
       )}
-      <p class="muted">
-        Aksi blokir, ubah kuota, dan angkat Admin akan tersedia di M3. Untuk v0.1, data dapat
-        diperiksa di sini.
+      <p class="muted small" style={{ marginTop: '1.25rem' }}>
+        * Role Owner memegang kuasa tertinggi bot. Kontak baru yang menyapa bot diatur oleh opsi <code>ACCESS_MODE</code>.
       </p>
     </Card>
   );

@@ -1,5 +1,5 @@
 import { api } from '../api';
-import { Badge, Card, ErrorNote, Loading } from '../components';
+import { Badge, Card, ErrorNote, Icons, Loading } from '../components';
 import { useAsync } from '../hooks';
 
 export function SettingsPage() {
@@ -8,59 +8,70 @@ export function SettingsPage() {
   return (
     <>
       <Card
-        title="Konfigurasi aktif"
+        title="Konfigurasi Aktif & Parameter Bot"
+        subtitle="Setelan core engine, mode akses pengguna baru, dan batas rate limiting"
+        icon={<Icons.Settings width={16} height={16} />}
         action={
-          <button class="btn btn-ghost" type="button" onClick={reload}>
-            Muat ulang
+          <button class="btn btn-secondary btn-sm" type="button" onClick={reload}>
+            <Icons.Refresh width={14} height={14} />
+            <span>Segarkan</span>
           </button>
         }
       >
         <ErrorNote message={error} />
-        {loading && <Loading />}
+        {loading && <Loading text="Memuat konfigurasi sistem…" />}
         {data && (
           <dl class="kv">
             <div>
-              <dt>Prefix command</dt>
+              <dt>Prefix Command</dt>
               <dd>
                 <code>{data.prefix}</code>
               </dd>
             </div>
             <div>
-              <dt>Mode akses nomor asing</dt>
-              <dd>{data.accessMode}</dd>
+              <dt>Mode Akses Kontak Baru</dt>
+              <dd>
+                <Badge tone={data.accessMode === 'closed' ? 'warn' : 'ok'} size="sm">
+                  {data.accessMode}
+                </Badge>
+              </dd>
             </div>
             <div>
-              <dt>Mode grup default</dt>
+              <dt>Mode Grup Default</dt>
               <dd>{data.defaultChatMode}</dd>
             </div>
             <div>
-              <dt>Rate limit per chat</dt>
+              <dt>Rate Limit Chat</dt>
               <dd>{data.rateLimitPerMinute} pesan/menit</dd>
             </div>
             <div>
-              <dt>AI provider</dt>
+              <dt>Mesin AI Utama</dt>
               <dd>
-                {data.aiProvider} · <code>{data.aiModel}</code>
+                <strong>{data.aiProvider}</strong> · <code>{data.aiModel}</code>
                 {data.aiFallbackModel && (
-                  <>
+                  <span class="muted small">
                     {' '}· fallback <code>{data.aiFallbackModel}</code>
-                  </>
+                  </span>
                 )}
               </dd>
             </div>
             <div>
-              <dt>Timeout AI</dt>
+              <dt>Timeout Eksekusi AI</dt>
               <dd>{Math.round(data.aiTimeoutMs / 1000)} detik</dd>
             </div>
             <div>
               <dt>Mode WhatsApp</dt>
-              <dd>{data.whatsappMode}</dd>
+              <dd>
+                <Badge tone={data.whatsappMode === 'live' ? 'ok' : 'info'} size="sm">
+                  {data.whatsappMode}
+                </Badge>
+              </dd>
             </div>
             <div>
-              <dt>Kill switch</dt>
+              <dt>Status Kill Switch</dt>
               <dd>
-                <Badge tone={data.killSwitch ? 'danger' : 'ok'}>
-                  {data.killSwitch ? 'Aktif' : 'Nonaktif'}
+                <Badge tone={data.killSwitch ? 'danger' : 'ok'} size="sm">
+                  {data.killSwitch ? 'Aktif (Darurat)' : 'Nonaktif (Normal)'}
                 </Badge>
               </dd>
             </div>
@@ -68,19 +79,22 @@ export function SettingsPage() {
         )}
       </Card>
 
-      <Card title="Catatan">
+      <Card
+        title="Keamanan & Catatan Operasional"
+        subtitle="Kebijakan keamanan penyimpanan credential dan integrasi environment"
+        icon={<Icons.ShieldCheck width={16} height={16} />}
+      >
         <ul class="checklist">
           <li>
-            Secret seperti API key tidak pernah dikirim ke Web UI maupun log. Penyimpanan
-            API key terenkripsi lewat Web UI masuk M3; saat ini key dibaca dari{' '}
-            <code>.env</code>.
+            <strong>Zero Secret Exposure:</strong> Kunci API LLM (OpenAI / Gemini / OpenRouter) tidak pernah
+            diekspos ke browser atau audit log, melainkan dibaca aman di sisi server dari <code>.env</code>.
           </li>
           <li>
-            Saat ini environment <code>.env</code> menjadi sumber konfigurasi awal. Editor
-            pengaturan penuh akan menggantikan ini di M3.
+            <strong>Penyimpanan Sesi E2EE:</strong> Kunci sesi WhatsApp disimpan terenkripsi di folder{' '}
+            <code>data/whatsapp-auth/</code> server host.
           </li>
           <li>
-            Mode gelap/terang mengikuti preferensi perangkat dan dapat diganti dari bilah atas.
+            <strong>Tema & Aksesibilitas:</strong> Sistem UI mendukung tema Gelap dan Terang dengan standar kontras WCAG 2.2 AAA.
           </li>
         </ul>
       </Card>

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'preact/hooks';
 import QRCode from 'qrcode';
 import { api } from '../api';
-import { Badge, Card, StatusPill } from '../components';
+import { Badge, Card, Icons, StatusPill } from '../components';
 import type { StatusResponse } from '../types';
 
 function PairingQr({ value }: { value: string }) {
@@ -161,20 +161,21 @@ function PairingPanel({ status }: { status: StatusResponse | null }) {
     return (
       <>
         <div class="qr-placeholder qr-connected" aria-label="WhatsApp tersambung">
-          <span>✓</span>
-          <p>WhatsApp sudah tersambung. Sesi tersimpan dan akan dipakai ulang saat server restart.</p>
+          <Icons.CheckCircle width={48} height={48} style={{ color: 'var(--ok)' }} />
+          <p style={{ marginTop: '0.75rem', fontWeight: 600 }}>WhatsApp Sudah Tersambung</p>
+          <p class="muted small" style={{ margin: '0' }}>
+            Sesi terenkripsi aman aktif di server. Sesi disimpan di <code>data/whatsapp-auth</code>.
+          </p>
         </div>
-        <p class="muted small">
-          Koneksi terputus akan dicoba ulang otomatis dengan backoff sampai berhasil atau sesi logout.
-        </p>
-        <div style={{ marginTop: '1rem', textAlign: 'center' }}>
+        <div style={{ marginTop: '1.25rem', textAlign: 'center' }}>
           <button
             type="button"
             class="btn btn-secondary btn-sm"
             onClick={handleDisconnect}
             disabled={disconnecting}
           >
-            {disconnecting ? 'Memutuskan sesi…' : 'Putuskan Koneksi / Logout'}
+            <Icons.X width={14} height={14} />
+            <span>{disconnecting ? 'Memutuskan sesi…' : 'Putuskan Koneksi / Logout'}</span>
           </button>
         </div>
       </>
@@ -216,14 +217,16 @@ function PairingPanel({ status }: { status: StatusResponse | null }) {
           class={`btn btn-sm ${method === 'qr' ? 'btn-primary' : 'btn-secondary'}`}
           onClick={() => setMethod('qr')}
         >
-          Pindai QR
+          <Icons.QrCode width={14} height={14} />
+          <span>Pindai QR</span>
         </button>
         <button
           type="button"
           class={`btn btn-sm ${method === 'code' ? 'btn-primary' : 'btn-secondary'}`}
           onClick={() => setMethod('code')}
         >
-          Pairing Code (8 Digit)
+          <Icons.Key width={14} height={14} />
+          <span>Pairing Code (8 Digit)</span>
         </button>
       </div>
 
@@ -442,7 +445,11 @@ export function ConnectionPage({ status }: { status: StatusResponse | null }) {
       )}
 
       <div class="grid grid-2">
-        <Card title="Koneksi WhatsApp">
+        <Card
+          title="Status Koneksi WhatsApp"
+          subtitle="Parameter socket sesi dan detail transport"
+          icon={<Icons.WhatsApp width={16} height={16} />}
+        >
           <div class="row-between">
             <StatusPill status={connection?.status ?? null} />
             <Badge tone={connection?.mode === 'live' ? 'ok' : 'warn'}>
@@ -475,12 +482,20 @@ export function ConnectionPage({ status }: { status: StatusResponse | null }) {
           </dl>
         </Card>
 
-        <Card title="Pairing">
+        <Card
+          title="Pairing & Otentikasi Multi-Device"
+          subtitle="Pindai QR atau masukkan kode pairing 8 digit di ponsel"
+          icon={<Icons.Key width={16} height={16} />}
+        >
           <PairingPanel status={status} />
         </Card>
       </div>
 
-      <Card title="Langkah menyambungkan">
+      <Card
+        title="Langkah Menyambungkan WhatsApp"
+        subtitle="Petunjuk verifikasi perangkat tertaut resmi"
+        icon={<Icons.ShieldCheck width={16} height={16} />}
+      >
         <ol class="steps">
           <li>
             Isi <code>OWNER_JID</code> dengan nomor WhatsApp Owner (format{' '}

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'preact/hooks';
 import { api } from '../api';
-import { Badge, Card, Empty, ErrorNote, Loading } from '../components';
+import { Badge, Card, Empty, ErrorNote, Icons, Loading } from '../components';
 import { formatTime } from '../format';
 import type { GroupChat, Persona } from '../types';
 
@@ -75,35 +75,36 @@ export function GroupsPage() {
       <ErrorNote message={error} />
 
       <Card
-        title="Pengaturan Mode Grup"
+        title="Pengaturan Mode Grup WhatsApp"
+        subtitle="Konfigurasi respons AI dan persona spesifik untuk setiap obrolan grup"
+        icon={<Icons.Users width={16} height={16} />}
         action={
           <button class="btn btn-secondary btn-sm" type="button" onClick={() => void loadData()}>
-            Muat ulang
+            <Icons.Refresh width={14} height={14} />
+            <span>Segarkan</span>
           </button>
         }
       >
-        <p class="muted" style={{ marginBottom: '1.25rem' }}>
-          Atur perilaku bot di setiap grup WhatsApp. Mode <strong>mention</strong> (bawaan) hanya membalas jika
-          bot di-tag, pesan bot di-reply, atau nama bot dipanggil. Mode <strong>aktif</strong> merespons setiap obrolan.
-          Mode <strong>off</strong> menonaktifkan AI di grup tersebut.
+        <p class="muted small" style={{ marginBottom: '1.25rem' }}>
+          Mode <strong>mention</strong> (bawaan) hanya membalas jika bot di-tag atau nama dipanggil. Mode{' '}
+          <strong>active</strong> merespons setiap percakapan. Mode <strong>off</strong> membisukan AI di grup tersebut.
         </p>
 
         {loading ? (
-          <Loading />
+          <Loading text="Memuat daftar grup WhatsApp…" />
         ) : groups.length === 0 ? (
-          <Empty>
-            Belum ada grup yang terdeteksi. Grup akan otomatis muncul di sini setelah bot menerima pesan
-            atau dimasukkan ke dalam grup.
+          <Empty title="Belum Ada Grup Terdeteksi">
+            Grup akan otomatis terdaftar setelah bot menerima pesan di dalam grup WhatsApp bersangkutan.
           </Empty>
         ) : (
-          <div style={{ overflowX: 'auto' }}>
-            <table class="table">
+          <div class="table-wrap">
+            <table>
               <thead>
                 <tr>
-                  <th>Chat ID Grup</th>
-                  <th>Mode Respons</th>
+                  <th>Chat ID Grup WhatsApp</th>
+                  <th>Mode Respons AI</th>
                   <th>Persona Khusus</th>
-                  <th>Terakhir Aktif</th>
+                  <th>Waktu Terakhir Aktif</th>
                 </tr>
               </thead>
               <tbody>
@@ -112,14 +113,16 @@ export function GroupsPage() {
                   return (
                     <tr key={group.chatId}>
                       <td>
-                        <code style={{ fontSize: '0.85rem' }}>{group.chatId}</code>
+                        <code style={{ fontSize: '13px', fontWeight: 600 }}>{group.chatId}</code>
                       </td>
                       <td>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                          <Badge tone={modeBadgeTone(group.mode)}>{group.mode}</Badge>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <Badge tone={modeBadgeTone(group.mode)} size="sm">
+                            {group.mode.toUpperCase()}
+                          </Badge>
                           <select
                             class="input"
-                            style={{ padding: '0.2rem 0.4rem', fontSize: '0.85rem' }}
+                            style={{ padding: '4px 8px', fontSize: '13px', minHeight: '32px' }}
                             value={group.mode}
                             disabled={isSaving}
                             onChange={(e) =>
@@ -129,16 +132,16 @@ export function GroupsPage() {
                               )
                             }
                           >
-                            <option value="mention">mention (default)</option>
-                            <option value="active">active (semua pesan)</option>
-                            <option value="off">off (nonaktif)</option>
+                            <option value="mention">Mention (Default)</option>
+                            <option value="active">Active (Semua Pesan)</option>
+                            <option value="off">Off (Nonaktif)</option>
                           </select>
                         </div>
                       </td>
                       <td>
                         <select
                           class="input"
-                          style={{ padding: '0.2rem 0.4rem', fontSize: '0.85rem' }}
+                          style={{ padding: '4px 8px', fontSize: '13px', minHeight: '32px' }}
                           value={group.personaId ?? ''}
                           disabled={isSaving}
                           onChange={(e) =>
@@ -157,7 +160,9 @@ export function GroupsPage() {
                         </select>
                       </td>
                       <td>
-                        <span class="muted small">{formatTime(group.updatedAt)}</span>
+                        <span class="muted small" style={{ fontVariantNumeric: 'tabular-nums' }}>
+                          {formatTime(group.updatedAt)}
+                        </span>
                       </td>
                     </tr>
                   );
