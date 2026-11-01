@@ -72,12 +72,18 @@ export function createDynamicAiProvider(options: {
 function createProvider(
   config: AppConfig,
   logger: AppContext['logger'],
+  stores?: ReturnType<typeof createStores>,
 ): AiProvider {
+  const provider = stores?.settings.get('ai_provider') || config.aiProvider;
+  const model = stores?.settings.get('ai_model') || config.aiModel;
+  const baseUrl = stores?.settings.get('ai_base_url') || (provider === 'gemini' ? config.geminiBaseUrl : config.openaiBaseUrl);
+  const apiKey = stores?.settings.get('ai_api_key') || (provider === 'gemini' ? config.geminiApiKey : config.openaiApiKey);
+
   return createDynamicAiProvider({
-    provider: config.aiProvider,
-    apiKey: config.aiProvider === 'gemini' ? config.geminiApiKey : config.openaiApiKey,
-    baseUrl: config.aiProvider === 'gemini' ? config.geminiBaseUrl : config.openaiBaseUrl,
-    model: config.aiModel,
+    provider,
+    apiKey,
+    baseUrl,
+    model,
     fallbackModel: config.aiFallbackModel,
     timeoutMs: config.aiTimeoutMs,
     logger,
@@ -130,10 +136,10 @@ export async function createAppContext(config: AppConfig): Promise<AppContext> {
     });
   }
 
-  stores.settings.set('prefix', config.prefix);
-  stores.settings.set('access_mode', config.accessMode);
-  stores.settings.set('default_chat_mode', config.defaultChatMode);
-  stores.settings.set('ai_provider', config.aiProvider);
+  if (!stores.settings.get('prefix')) stores.settings.set('prefix', config.prefix);
+  if (!stores.settings.get('access_mode')) stores.settings.set('access_mode', config.accessMode);
+  if (!stores.settings.get('default_chat_mode')) stores.settings.set('default_chat_mode', config.defaultChatMode);
+  if (!stores.settings.get('ai_provider')) stores.settings.set('ai_provider', config.aiProvider);
 
   const { adapter, mock } = createAdapter(config, logger, stores);
   if (config.whatsappMode === 'mock' && mock) {
@@ -158,18 +164,20 @@ export async function createAppContext(config: AppConfig): Promise<AppContext> {
   commands.registerAll(createPluginCommands());
 
   const router = new MessageRouter(config.prefix, commands);
-  const provider = createProvider(config, logger);
+  const provider = createProvider(config, logger, stores);
 
+  const effectiveApiKey = stores.settings.get('ai_api_key') || (config.aiProvider === 'gemini' ? config.geminiApiKey : config.openaiApiKey);
+  const effectiveProvider = stores.settings.get('ai_provider') || config.aiProvider;
   let transcriber: AudioTranscriber | undefined;
-  if (config.openaiApiKey) {
-    transcriber = new WhisperAudioTranscriber({
-      apiKey: config.openaiApiKey,
-      baseUrl: config.openaiBaseUrl,
-    });
-  } else if (config.geminiApiKey) {
+  if (effectiveProvider === 'gemini' && effectiveApiKey) {
     transcriber = new GeminiAudioTranscriber({
-      apiKey: config.geminiApiKey,
-      baseUrl: config.geminiBaseUrl,
+      apiKey: effectiveApiKey,
+      baseUrl: stores.settings.get('ai_base_url') || config.geminiBaseUrl,
+    });
+  } else if (effectiveApiKey) {
+    transcriber = new WhisperAudioTranscriber({
+      apiKey: effectiveApiKey,
+      baseUrl: stores.settings.get('ai_base_url') || config.openaiBaseUrl,
     });
   }
 

@@ -125,11 +125,14 @@ export class MockProvider implements AiProvider {
     }
 
     if (/^(hai|halo|hello|hi)\b/i.test(lastUser.trim())) {
-      return { text: 'Halo! Ada yang bisa aku bantu?', toolCalls: [] };
+      return {
+        text: 'Halo! Bot saat ini masih dalam mode simulasi mock. Silakan masukkan API Key AI di Web UI Pengaturan bot agar saya dapat berpikir dan membalas secara cerdas.',
+        toolCalls: [],
+      };
     }
 
     return {
-      text: `Aku dengar: "${lastUser}". Respon simulasi.`,
+      text: `Mode simulasi aktif: "${lastUser}". Bot belum terhubung ke API Key AI sungguhan. Silakan masukkan API Key Gemini atau OpenAI di Web UI Pengaturan agar bot dapat membalas secara cerdas.`,
       toolCalls: [],
     };
   }
