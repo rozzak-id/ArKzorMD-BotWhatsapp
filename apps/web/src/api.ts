@@ -77,6 +77,30 @@ export const api = {
       body: JSON.stringify({ personas }),
     }),
   users: () => request<{ users: import('./types').User[] }>('/api/users'),
+  createUser: (data: { phoneOrJid: string; name?: string; role?: string }) =>
+    request<{ ok: boolean; user: import('./types').User }>('/api/users', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  setUserRole: (jid: string, role: string) =>
+    request<{ ok: boolean; jid: string; role: string }>(`/api/users/${encodeURIComponent(jid)}/role`, {
+      method: 'POST',
+      body: JSON.stringify({ role }),
+    }),
+  setUserStatus: (jid: string, status: 'active' | 'blocked') =>
+    request<{ ok: boolean; jid: string; status: string }>(`/api/users/${encodeURIComponent(jid)}/status`, {
+      method: 'POST',
+      body: JSON.stringify({ status }),
+    }),
+  deleteUser: (jid: string) =>
+    request<{ ok: boolean; jid: string }>(`/api/users/${encodeURIComponent(jid)}`, {
+      method: 'DELETE',
+    }),
+  playgroundChat: (data: { text: string; personaId?: string; history?: Array<{ role: 'user' | 'assistant'; content: string }> }) =>
+    request<import('./types').PlaygroundChatResult>('/api/playground/chat', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
   tools: () => request<ToolResponse>('/api/tools'),
   audit: (limit = 50) => request<AuditResponse>(`/api/audit?limit=${limit}`),
   settings: () => request<SettingsResponse>('/api/settings'),
@@ -84,6 +108,11 @@ export const api = {
     request<{ ok: boolean; message: string }>('/api/settings', {
       method: 'POST',
       body: JSON.stringify(data),
+    }),
+  fetchModels: (data?: { provider?: string; baseUrl?: string; apiKey?: string }) =>
+    request<{ ok: boolean; provider: string; count: number; models: string[] }>('/api/settings/fetch-models', {
+      method: 'POST',
+      body: JSON.stringify(data || {}),
     }),
   testAi: (data: { aiProvider?: string; aiModel?: string; aiApiKey?: string; aiBaseUrl?: string }) =>
     request<{ ok: boolean; latencyMs: number; reply?: string; error?: string }>('/api/settings/test-ai', {

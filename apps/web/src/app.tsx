@@ -14,10 +14,12 @@ import { UsersPage } from './pages/users';
 import { MemoryPage } from './pages/memory';
 import { GroupsPage } from './pages/groups';
 import { SetupPage } from './pages/setup';
+import { PlaygroundPage } from './pages/playground';
 import { api } from './api';
 
 type RouteId =
   | 'dashboard'
+  | 'playground'
   | 'connection'
   | 'personas'
   | 'users'
@@ -42,6 +44,7 @@ const NAV_GROUPS: Array<{ title: string; items: NavItem[] }> = [
     title: 'Utama',
     items: [
       { id: 'dashboard', label: 'Dashboard', icon: 'Activity' },
+      { id: 'playground', label: 'AI Playground', icon: 'MessageSquare' },
       { id: 'connection', label: 'Koneksi WhatsApp', icon: 'WhatsApp' },
       { id: 'approvals', label: 'Persetujuan', icon: 'ShieldCheck' },
     ],
@@ -92,6 +95,8 @@ function Page({
   onNavigate?: (to: RouteId) => void;
 }) {
   switch (route) {
+    case 'playground':
+      return <PlaygroundPage />;
     case 'connection':
       return <ConnectionPage status={status} />;
     case 'personas':

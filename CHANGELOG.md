@@ -4,6 +4,37 @@ Semua perubahan penting pada proyek **ArKzorMD** akan dicatat dalam berkas ini. 
 
 ---
 
+## [v0.5.0] - 2026-11-01
+
+### Fitur Utama & Penyempurnaan (Highlights)
+
+#### 1. AI Chat Playground Interaktif di Web UI
+- **Konsol Playground Mandiri (`#/playground`)**: Sarana interaktif bagi Owner/Admin untuk menguji respons karakter, uji coba prompt, latency milidetik, pemanggilan tools internal, dan penalaran model LLM langsung dari browser tanpa memerlukan nomor WhatsApp penguji kedua.
+- **Pilihan Persona Dinamis**: Pilih karakter kepribadian yang sedang aktif atau persona kustom lainnya untuk menguji perbedaan gaya bicara dan instruksi khusus (*system prompt*).
+- **Preset Pertanyaan Cepat**: Uji coba instan dengan prompt siap pakai untuk memeriksa identitas karakter, sistem approval, kemampuan media, dan draft pengumuman.
+- **Metrik Telemetri Chat**: Menampilkan badge latency respon (ms), tools yang dieksekusi, serta status persetujuan approval L2 per pesan.
+
+#### 2. Auto-Discovery & Tarik Daftar Model (9Router, Ollama, Gemini, OpenAI, OpenRouter)
+- **Tombol Tarik Model Dinamis**: Tombol "Tarik Model" pada halaman Pengaturan dan Setup Wizard (Langkah 2) yang memanggil endpoint `POST /api/settings/fetch-models`.
+- **Dukungan OpenAI & Local Gateway**: Mengambil daftar model langsung dari `${baseUrl}/models` (misal 9Router port 20128, Ollama port 11434, OpenAI, OpenRouter) secara otomatis.
+- **Dukungan Google Gemini**: Mengambil daftar model generasi konten via Generative Language API Google.
+- **Selector Model Interaktif**: Menampilkan dropdown pilihan model yang tersedia langsung di samping input teks manual.
+
+#### 3. Manajemen Pengguna Manual & Kontrol Akses Lengkap
+- **Tambah Pengguna Manual**: Tombol "+ Tambah Pengguna" dengan modal dialog untuk mendaftarkan nomor kontak atau JID WhatsApp baru, nama kontak, serta penetapan role (Member, Admin, Owner).
+- **Ubah Role On-The-Fly**: Dropdown peran langsung pada tabel pengguna untuk menaikkan/menurunkan peran pengguna (Member <-> Admin <-> Owner).
+- **Blokir / Aktifkan Akun**: Tombol status klik-langsung untuk memblokir atau membuka blokir pengguna secara instan.
+- **Hapus Pengguna**: Tombol hapus pengguna dengan konfirmasi aman (Owner dilindungi dari penghapusan tidak disengaja).
+
+#### 4. Pengaturan Anti-Ban WhatsApp & Humanizer Delay
+- **Anti-Ban Typing Delay (ms)**: Konfigurasi jeda pengetikan acak alami (jitter delay 500ms - 3000ms) sebelum bot mengirim balasan untuk mensimulasikan perilaku manusia nyata dan menghindari deteksi automated bot.
+- **Auto-Read Control**: Opsi aktif/nonaktif fitur centang biru otomatis saat membalas pesan WhatsApp.
+
+#### 5. Pembersihan Total Emoji di Seluruh Command (Strict Zero-Emoji Policy)
+- **100% Vector SVG & Plain Text**: Mengeliminasi seluruh karakter emoji unicode yang tersisa di 57 file command handler (`packages/core/src/commands/`) dan kode bot, menggantikannya dengan penanda teks terstruktur seperti `[OK]`, `[SUKSES]`, `[PERINGATAN]`, `[GAGAL]`, dan `[INFO]`.
+
+---
+
 ## [v0.4.0] - 2026-11-01
 
 ### 🌟 Fitur Utama & Penyempurnaan (Highlights)

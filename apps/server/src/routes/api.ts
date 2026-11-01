@@ -1,6 +1,6 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { z } from 'zod';
-import type { InternalMessage, Persona } from '@arkzormd/core';
+import type { InternalMessage, Persona, Role } from '@arkzormd/core';
 import type { AppContext } from '../context.js';
 import { isSetupCompleted, requireAdmin } from '../auth.js';
 import { APP_VERSION, buildPlatforms, buildStatus } from '../status.js';
@@ -298,6 +298,8 @@ export function registerApiRoutes(app: FastifyInstance, context: AppContext): vo
       aiFallbackModel: context.config.aiFallbackModel,
       aiTimeoutMs: context.config.aiTimeoutMs,
       hasApiKey,
+      jitterDelayMs: context.stores.settings.getNumber('jitter_delay_ms', 1200),
+      autoRead: context.stores.settings.getBoolean('auto_read', true),
       whatsappMode: context.config.whatsappMode,
     };
   });
@@ -321,6 +323,12 @@ export function registerApiRoutes(app: FastifyInstance, context: AppContext): vo
     }
     if (typeof body.rateLimitPerMinute === 'number' && body.rateLimitPerMinute > 0) {
       context.stores.settings.set('rate_limit_per_minute', String(body.rateLimitPerMinute));
+    }
+    if (typeof body.jitterDelayMs === 'number' && body.jitterDelayMs >= 0) {
+      context.stores.settings.set('jitter_delay_ms', String(body.jitterDelayMs));
+    }
+    if (typeof body.autoRead === 'boolean') {
+      context.stores.settings.set('auto_read', String(body.autoRead));
     }
 
     let reloadAi = false;
@@ -421,6 +429,67 @@ export function registerApiRoutes(app: FastifyInstance, context: AppContext): vo
     }
   });
 
+  app.post('/api/settings/fetch-models', async (request, reply) => {
+    if (!requireAdmin(context, request, reply)) return reply;
+    const body = (request.body as Record<string, unknown> | undefined) ?? {};
+    const provider = String(body.provider || context.stores.settings.get('ai_provider') || context.config.aiProvider);
+    const baseUrl = String(body.baseUrl || context.stores.settings.get('ai_base_url') || (provider === 'gemini' ? context.config.geminiBaseUrl : context.config.openaiBaseUrl));
+    const apiKey = typeof body.apiKey === 'string' && body.apiKey.trim()
+      ? body.apiKey.trim()
+      : context.stores.settings.get('ai_api_key') || (provider === 'gemini' ? context.config.geminiApiKey : context.config.openaiApiKey);
+
+    try {
+      let models: string[] = [];
+      if (provider === 'gemini') {
+        if (!apiKey) {
+          return reply.code(400).send({ ok: false, error: 'API key Gemini wajib diisi untuk mengambil daftar model.' });
+        }
+        const url = `https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(apiKey)}`;
+        const res = await fetch(url, { headers: { 'User-Agent': 'ArKzorMD/0.5.0' } });
+        if (!res.ok) {
+          const text = await res.text();
+          throw new Error(`Gemini API error (${res.status}): ${text.slice(0, 150)}`);
+        }
+        const json = (await res.json()) as { models?: Array<{ name?: string; supportedGenerationMethods?: string[] }> };
+        models = (json.models || [])
+          .filter((m) => !m.supportedGenerationMethods || m.supportedGenerationMethods.includes('generateContent'))
+          .map((m) => (m.name || '').replace(/^models\//, ''))
+          .filter(Boolean);
+      } else if (provider === 'mock') {
+        models = ['mock-echo', 'mock-chat', 'mock-reasoning'];
+      } else {
+        const cleanBase = baseUrl.replace(/\/+$/, '');
+        const modelsUrl = cleanBase.endsWith('/v1') ? `${cleanBase}/models` : `${cleanBase}/v1/models`;
+        const headers: Record<string, string> = {
+          'User-Agent': 'ArKzorMD/0.5.0',
+        };
+        if (apiKey) {
+          headers['Authorization'] = `Bearer ${apiKey}`;
+        }
+        let res = await fetch(modelsUrl, { headers });
+        if (!res.ok) {
+          res = await fetch(`${cleanBase}/models`, { headers });
+        }
+        if (!res.ok) {
+          const text = await res.text();
+          throw new Error(`API error (${res.status}): ${text.slice(0, 150)}`);
+        }
+        const json = (await res.json()) as { data?: Array<{ id?: string }>; models?: Array<{ name?: string }> };
+        if (Array.isArray(json.data)) {
+          models = json.data.map((d) => d.id || '').filter(Boolean);
+        } else if (Array.isArray(json.models)) {
+          models = json.models.map((m) => m.name || '').filter(Boolean);
+        }
+      }
+
+      models.sort((a, b) => a.localeCompare(b));
+      return { ok: true, provider, count: models.length, models };
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      return reply.code(400).send({ ok: false, error: `Gagal mengambil daftar model: ${msg}` });
+    }
+  });
+
   app.post('/api/settings/reset-data', async (request, reply) => {
     if (!requireAdmin(context, request, reply)) return reply;
     const body = request.body as { target?: string } | undefined;
@@ -506,6 +575,110 @@ export function registerApiRoutes(app: FastifyInstance, context: AppContext): vo
       status: existing?.status ?? 'active',
     });
     return { ok: true, jid, role };
+  });
+
+  app.post('/api/users', async (request, reply) => {
+    if (!requireAdmin(context, request, reply)) return reply;
+    const body = request.body as { phoneOrJid?: string; name?: string; role?: string } | undefined;
+    const raw = body?.phoneOrJid?.trim();
+    if (!raw) {
+      return reply.code(400).send({ error: 'Nomor telepon atau JID pengguna wajib diisi.' });
+    }
+
+    let jid = raw;
+    if (!jid.includes('@')) {
+      let digits = raw.replace(/\D/g, '');
+      if (digits.startsWith('0')) {
+        digits = '62' + digits.slice(1);
+      }
+      if (digits.length < 8 || digits.length > 16) {
+        return reply.code(400).send({ error: 'Nomor telepon tidak valid.' });
+      }
+      jid = `${digits}@s.whatsapp.net`;
+    }
+
+    const role = (['owner', 'admin', 'member'].includes(body?.role ?? '') ? body?.role : 'member') as Role;
+    const name = body?.name?.trim() || null;
+
+    const user = context.stores.users.upsert({
+      jid,
+      name,
+      role,
+      status: 'active',
+    });
+
+    context.stores.audit.append({
+      actorJid: context.config.ownerJid,
+      action: 'user.created',
+      params: { jid, name, role },
+      result: { success: true },
+      createdAt: Date.now(),
+    });
+
+    return { ok: true, user };
+  });
+
+  app.post('/api/users/:jid/status', async (request, reply) => {
+    if (!requireAdmin(context, request, reply)) return reply;
+    const params = request.params as { jid?: string };
+    const body = request.body as { status?: string } | undefined;
+    const jid = params.jid;
+    const status = body?.status;
+    if (!jid || !['active', 'blocked'].includes(status ?? '')) {
+      return reply.code(400).send({ error: 'JID dan status (active|blocked) wajib diisi.' });
+    }
+    context.stores.users.setStatus(jid, status as any);
+    return { ok: true, jid, status };
+  });
+
+  app.delete('/api/users/:jid', async (request, reply) => {
+    if (!requireAdmin(context, request, reply)) return reply;
+    const params = request.params as { jid?: string };
+    const jid = params.jid;
+    if (!jid) return reply.code(400).send({ error: 'JID pengguna wajib diisi.' });
+
+    if (jid === context.config.ownerJid) {
+      return reply.code(400).send({ error: 'Tidak dapat menghapus Owner utama sistem.' });
+    }
+
+    if (context.stores.users.delete) {
+      const ok = context.stores.users.delete(jid);
+      context.stores.audit.append({
+        actorJid: context.config.ownerJid,
+        action: 'user.deleted',
+        params: { jid },
+        result: { ok },
+        createdAt: Date.now(),
+      });
+      return { ok, jid };
+    }
+    return reply.code(501).send({ error: 'Store tidak mendukung penghapusan user.' });
+  });
+
+  app.post('/api/playground/chat', async (request, reply) => {
+    if (!requireAdmin(context, request, reply)) return reply;
+    const body = request.body as {
+      text?: string;
+      personaId?: string;
+      history?: Array<{ role: 'user' | 'assistant'; content: string }>;
+    } | undefined;
+
+    const text = body?.text?.trim();
+    if (!text) {
+      return reply.code(400).send({ error: 'Pesan chat wajib diisi.' });
+    }
+
+    try {
+      const result = await context.bot.runPlaygroundChat({
+        text,
+        personaId: body?.personaId,
+        history: body?.history,
+      });
+      return { ok: true, ...result };
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      return reply.code(500).send({ error: `AI Playground error: ${msg}` });
+    }
   });
 
   app.get('/api/groups', async () => {

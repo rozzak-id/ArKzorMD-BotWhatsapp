@@ -14,19 +14,19 @@ export { optionalCommands } from './optional/index.js';
 /**
  * Mengembalikan seluruh command resmi yang aktif dan relevan untuk proyek ArKzorMD.
  * Fitur dikelompokkan modular per file:
- * - ⚙️ Core & Sistem (menu, ping, owner, role, status, reset, persona, approval, stop, dll)
- * - 👥 Grup & Moderasi (admin, hidetag, totag, del, groupset, antilink, warn, welcome, list, dll)
- * - 🛍️ CS & Toko (order, faq, komplain, broadcast, bcgc)
- * - 🛠️ Utility & Media (ai, downloader, music, search, sticker, maker, gamecheck, qris, dll)
+ * - Core & Sistem (menu, ping, owner, role, status, reset, persona, approval, stop, dll)
+ * - Grup & Moderasi (admin, hidetag, totag, del, groupset, antilink, warn, welcome, list, dll)
+ * - CS & Toko (order, faq, komplain, broadcast, bcgc)
+ * - Utility & Media (ai, downloader, music, search, sticker, maker, gamecheck, qris, dll)
  *
  * Catatan: Fitur di luar proyek (.stalker, .anime, .nsfw) sengaja dipisahkan di `optionalCommands`.
  */
 export function getAllCommands(): CommandDefinition[] {
-  return [
-    ...coreCommands,
-    ...groupCommands,
-    ...csCommands,
-    ...mediaCommands,
-  ];
+ return [
+ ...coreCommands,
+ ...groupCommands,
+ ...csCommands,
+ ...mediaCommands,
+ ];
 }
 

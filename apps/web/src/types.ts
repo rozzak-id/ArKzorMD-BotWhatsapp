@@ -133,7 +133,18 @@ export interface SettingsResponse {
   aiFallbackModel: string | null;
   aiTimeoutMs: number;
   hasApiKey?: boolean;
+  jitterDelayMs?: number;
+  autoRead?: boolean;
   whatsappMode: string;
+}
+
+export interface PlaygroundChatResult {
+  ok: boolean;
+  text: string;
+  latencyMs: number;
+  toolCalls: string[];
+  pendingApprovals: string[];
+  persona: Persona;
 }
 
 export interface GroupChat {

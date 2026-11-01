@@ -5,8 +5,10 @@ import type {
   InternalMessage,
   MessageHandler,
   OutgoingContent,
+  Persona,
   PlatformAdapter,
   Role,
+  StoredMessage,
   ToolResult,
   User,
 } from './types.js';
@@ -104,6 +106,67 @@ export class Bot {
     this.deps.agent.setProvider(provider);
   }
 
+  async runPlaygroundChat(input: {
+    text: string;
+    personaId?: string;
+    senderJid?: string;
+    history?: Array<{ role: 'user' | 'assistant'; content: string }>;
+  }): Promise<{
+    text: string;
+    latencyMs: number;
+    toolCalls: string[];
+    pendingApprovals: string[];
+    persona: Persona;
+  }> {
+    const persona = (input.personaId ? this.deps.personas.get(input.personaId) : undefined)
+      ?? this.deps.personas.getActive()
+      ?? DEFAULT_PERSONA;
+
+    const jid = input.senderJid ?? (this.deps.config.ownerJid || 'owner@playground.local');
+    const role: Role = 'owner';
+    const fakeMessage: InternalMessage = {
+      id: `pg_${Date.now()}`,
+      platform: 'whatsapp',
+      chatId: 'playground',
+      chatType: 'private',
+      senderId: jid,
+      senderName: 'Playground Admin',
+      isGroup: false,
+      text: input.text,
+      media: [],
+      mentions: [],
+      timestamp: Date.now(),
+      fromBot: false,
+    };
+
+    const storedHistory: StoredMessage[] = (input.history || []).map((h, i) => ({
+      id: i + 1,
+      chatId: 'playground',
+      platform: 'whatsapp',
+      senderId: h.role === 'assistant' ? (this.deps.config.botJid || 'bot@playground.local') : jid,
+      role: h.role,
+      content: h.content,
+      createdAt: Date.now() - ((input.history?.length ?? 0) - i) * 1000,
+    }));
+
+    const startTime = Date.now();
+    const result = await this.deps.agent.run({
+      message: fakeMessage,
+      role,
+      persona,
+      history: storedHistory,
+    });
+    const latencyMs = Date.now() - startTime;
+
+    return {
+      text: result.text,
+      latencyMs,
+      toolCalls: result.toolCalls,
+      pendingApprovals: result.pendingApprovals,
+      persona,
+    };
+  }
+
   private async handleSafely(message: InternalMessage): Promise<void> {
     try {
       await this.handleMessage(message);
@@ -130,7 +193,7 @@ export class Bot {
             message.chatId,
             {
               text:
-                '⚠️ Maaf, layanan AI sedang bermasalah. ' +
+                '[PERINGATAN] Maaf, layanan AI sedang bermasalah. ' +
                 'Coba lagi beberapa saat lagi ya.',
             },
             [],
@@ -528,8 +591,8 @@ export class Bot {
     });
 
     const notification = result.ok
-      ? `✅ Aksi *${request.toolName}* (${request.shortCode}) disetujui Owner dan sudah dijalankan.`
-      : `⚠️ Aksi *${request.toolName}* disetujui, tetapi gagal: ${result.error ?? 'tidak diketahui'}.`;
+      ? `[SUKSES] Aksi *${request.toolName}* (${request.shortCode}) disetujui Owner dan sudah dijalankan.`
+      : `[PERINGATAN] Aksi *${request.toolName}* disetujui, tetapi gagal: ${result.error ?? 'tidak diketahui'}.`;
 
     const replies: string[] = [];
     await this.reply(request.chatId, { text: notification }, replies);

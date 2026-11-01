@@ -60,6 +60,8 @@ export function SetupPage({ status, onFinish }: SetupPageProps) {
   const [showApiKey, setShowApiKey] = useState(false);
   const [testingAi, setTestingAi] = useState(false);
   const [testResult, setTestResult] = useState<{ ok: boolean; latencyMs?: number; reply?: string; error?: string } | null>(null);
+  const [fetchedModels, setFetchedModels] = useState<string[]>([]);
+  const [fetchingModels, setFetchingModels] = useState(false);
 
   // Step 3: WhatsApp
   const [waMethod, setWaMethod] = useState<'qr' | 'code'>('qr');
@@ -170,6 +172,28 @@ export function SetupPage({ status, onFinish }: SetupPageProps) {
       });
     } finally {
       setTestingAi(false);
+    }
+  }
+
+  async function handleFetchModelsStep2() {
+    setFetchingModels(true);
+    setError(null);
+    try {
+      const res = await api.fetchModels({
+        provider: aiProvider,
+        baseUrl: aiBaseUrl.trim() || undefined,
+        apiKey: aiApiKey.trim() || undefined,
+      });
+      setFetchedModels(res.models);
+      if (res.models.length > 0) {
+        setSuccessNote(`Berhasil menarik ${res.count} model dari ${res.provider}!`);
+      } else {
+        setError('Tidak ada model yang ditemukan dari endpoint ini.');
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setFetchingModels(false);
     }
   }
 
@@ -479,9 +503,38 @@ export function SetupPage({ status, onFinish }: SetupPageProps) {
               </div>
 
               <div class="form-group">
-                <label class="form-label">
-                  <span>Nama Model</span>
-                </label>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', marginBottom: '6px' }}>
+                  <label class="form-label" style={{ marginBottom: 0 }}>
+                    <span>Nama Model</span>
+                  </label>
+                  <button
+                    type="button"
+                    class="btn btn-secondary btn-sm"
+                    style={{ padding: '2px 8px', fontSize: '11px', display: 'flex', alignItems: 'center', gap: '4px' }}
+                    onClick={handleFetchModelsStep2}
+                    disabled={fetchingModels}
+                    title="Tarik daftar model dari endpoint AI"
+                  >
+                    <Icons.Download width={12} height={12} />
+                    <span>{fetchingModels ? 'Menarik…' : 'Tarik Model'}</span>
+                  </button>
+                </div>
+                {fetchedModels.length > 0 && (
+                  <select
+                    class="input"
+                    style={{ marginBottom: '8px' }}
+                    value={fetchedModels.includes(aiModel) ? aiModel : ''}
+                    onChange={(e) => {
+                      const val = (e.target as HTMLSelectElement).value;
+                      if (val) setAiModel(val);
+                    }}
+                  >
+                    <option value="">-- Pilih dari {fetchedModels.length} Model --</option>
+                    {fetchedModels.map((m) => (
+                      <option key={m} value={m}>{m}</option>
+                    ))}
+                  </select>
+                )}
                 <input
                   type="text"
                   class="input"

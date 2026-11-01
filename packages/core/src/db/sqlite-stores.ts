@@ -259,6 +259,11 @@ export class SqliteUserStore implements UserStore {
       .run(status, now(), jid);
   }
 
+  delete(jid: string): boolean {
+    const result = this.db.prepare('DELETE FROM users WHERE jid = ?').run(jid);
+    return (result.changes ?? 0) > 0;
+  }
+
   count(): number {
     const row = this.db.prepare('SELECT COUNT(*) AS total FROM users').get() as { total: number };
     return row.total;

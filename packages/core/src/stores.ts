@@ -26,6 +26,7 @@ export interface UserStore {
   list(): User[];
   setRole(jid: string, role: Role): void;
   setStatus(jid: string, status: UserStatus): void;
+  delete?(jid: string): boolean;
   count(): number;
 }
 

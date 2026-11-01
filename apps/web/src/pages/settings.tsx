@@ -14,9 +14,13 @@ export function SettingsPage() {
   const [showApiKey, setShowApiKey] = useState(false);
   const [testingAi, setTestingAi] = useState(false);
   const [testResult, setTestResult] = useState<{ ok: boolean; latencyMs?: number; reply?: string; error?: string } | null>(null);
+  const [fetchedModels, setFetchedModels] = useState<string[]>([]);
+  const [fetchingModels, setFetchingModels] = useState(false);
 
   // Access & Self Control State
   const [selfControl, setSelfControl] = useState<boolean>(true);
+  const [autoRead, setAutoRead] = useState<boolean>(true);
+  const [jitterDelayMs, setJitterDelayMs] = useState<number>(1200);
   const [prefix, setPrefix] = useState<string>('.');
   const [accessMode, setAccessMode] = useState<string>('closed');
   const [rateLimit, setRateLimit] = useState<number>(12);
@@ -35,6 +39,8 @@ export function SettingsPage() {
       setAiModel(data.aiModel || 'gemini-2.5-flash');
       setAiBaseUrl(data.aiBaseUrl || '');
       setSelfControl(data.selfControl !== false);
+      setAutoRead(data.autoRead !== false);
+      setJitterDelayMs(data.jitterDelayMs ?? 1200);
       setPrefix(data.prefix || '.');
       setAccessMode(data.accessMode || 'closed');
       setRateLimit(data.rateLimitPerMinute || 12);
@@ -44,6 +50,7 @@ export function SettingsPage() {
   const handleProviderChange = (newProvider: string) => {
     setAiProvider(newProvider);
     setTestResult(null);
+    setFetchedModels([]);
     if (newProvider === '9router') {
       setAiBaseUrl('http://localhost:20128/v1');
       setAiModel('auto');
@@ -59,6 +66,28 @@ export function SettingsPage() {
     } else if (newProvider === 'ollama') {
       setAiBaseUrl('http://localhost:11434/v1');
       setAiModel('llama3.2');
+    }
+  };
+
+  const handleFetchModels = async () => {
+    setFetchingModels(true);
+    setActionError(null);
+    try {
+      const res = await api.fetchModels({
+        provider: aiProvider,
+        baseUrl: aiBaseUrl.trim() || undefined,
+        apiKey: aiApiKey.trim() || undefined,
+      });
+      setFetchedModels(res.models);
+      if (res.models.length > 0) {
+        setSuccessNote(`Berhasil menarik ${res.count} model dari ${res.provider}!`);
+      } else {
+        setActionError('Tidak ada model yang ditemukan dari endpoint ini.');
+      }
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setFetchingModels(false);
     }
   };
 
@@ -117,6 +146,8 @@ export function SettingsPage() {
         prefix,
         accessMode,
         rateLimitPerMinute: Number(rateLimit),
+        autoRead,
+        jitterDelayMs: Number(jitterDelayMs),
       });
       setSuccessNote('Setelan kontrol akses & bot berhasil disimpan.');
       await reload();
@@ -196,9 +227,38 @@ export function SettingsPage() {
               </div>
 
               <div class="form-group">
-                <label class="form-label">
-                  <span>Model AI</span>
-                </label>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', marginBottom: '6px' }}>
+                  <label class="form-label" style={{ marginBottom: 0 }}>
+                    <span>Model AI</span>
+                  </label>
+                  <button
+                    type="button"
+                    class="btn btn-secondary btn-sm"
+                    style={{ padding: '2px 8px', fontSize: '11px', display: 'flex', alignItems: 'center', gap: '4px' }}
+                    onClick={handleFetchModels}
+                    disabled={fetchingModels}
+                    title="Tarik daftar model dari server / endpoint AI secara dinamis"
+                  >
+                    <Icons.Download width={12} height={12} />
+                    <span>{fetchingModels ? 'Menarik…' : 'Tarik Model'}</span>
+                  </button>
+                </div>
+                {fetchedModels.length > 0 && (
+                  <select
+                    class="input"
+                    style={{ marginBottom: '8px' }}
+                    value={fetchedModels.includes(aiModel) ? aiModel : ''}
+                    onChange={(e) => {
+                      const val = (e.target as HTMLSelectElement).value;
+                      if (val) setAiModel(val);
+                    }}
+                  >
+                    <option value="">-- Pilih dari {fetchedModels.length} Model yang Tersedia --</option>
+                    {fetchedModels.map((m) => (
+                      <option key={m} value={m}>{m}</option>
+                    ))}
+                  </select>
+                )}
                 <input
                   type="text"
                   class="input"
@@ -362,37 +422,40 @@ export function SettingsPage() {
             </label>
           </div>
 
-          <div class="grid grid-3">
+          {/* Toggle Auto-Read */}
+          <div class="toggle-row">
+            <div>
+              <strong style={{ display: 'block', fontSize: '14.5px' }}>Auto-Read Pesan WhatsApp (Centang Biru)</strong>
+              <p class="form-hint" style={{ margin: '2px 0 0' }}>
+                Tandai pesan dibaca otomatis saat bot merespon. Matikan bila ingin bot bekerja tanpa menandai pesan telah dibaca.
+              </p>
+            </div>
+            <label class="toggle-switch">
+              <input
+                type="checkbox"
+                checked={autoRead}
+                onChange={(e) => setAutoRead((e.target as HTMLInputElement).checked)}
+              />
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+
+          <div class="grid grid-2">
             <div class="form-group">
               <label class="form-label">
-                <span>Prefix Command</span>
+                <span>Anti-Ban Typing Delay (ms)</span>
               </label>
               <input
-                type="text"
+                type="number"
                 class="input"
-                maxLength={3}
-                value={prefix}
-                onInput={(e) => setPrefix((e.target as HTMLInputElement).value)}
-                placeholder="."
+                min={0}
+                max={10000}
+                step={100}
+                value={jitterDelayMs}
+                onInput={(e) => setJitterDelayMs(Number((e.target as HTMLInputElement).value))}
                 required
               />
-              <span class="form-hint">Karakter awalan perintah (misal: .)</span>
-            </div>
-
-            <div class="form-group">
-              <label class="form-label">
-                <span>Kebijakan Kontak Baru</span>
-              </label>
-              <select
-                class="input"
-                value={accessMode}
-                onChange={(e) => setAccessMode((e.target as HTMLSelectElement).value)}
-              >
-                <option value="closed">Tertutup (Hanya Owner & Admin)</option>
-                <option value="auto_member">Member Otomatis (Publik)</option>
-                <option value="approval">Perlu Persetujuan Owner</option>
-              </select>
-              <span class="form-hint">Bagaimana bot menyikapi nomor baru</span>
+              <span class="form-hint">Jeda mengetik alami sebelum mengirim pesan balasan (simulasi manusia)</span>
             </div>
 
             <div class="form-group">
@@ -408,7 +471,41 @@ export function SettingsPage() {
                 onInput={(e) => setRateLimit(Number((e.target as HTMLInputElement).value))}
                 required
               />
-              <span class="form-hint">Mencegah spam & pembatasan WhatsApp</span>
+              <span class="form-hint">Mencegah spam banjir chat & proteksi pembatasan nomor WhatsApp</span>
+            </div>
+          </div>
+
+          <div class="grid grid-2">
+            <div class="form-group">
+              <label class="form-label">
+                <span>Prefix Command</span>
+              </label>
+              <input
+                type="text"
+                class="input"
+                maxLength={3}
+                value={prefix}
+                onInput={(e) => setPrefix((e.target as HTMLInputElement).value)}
+                placeholder="."
+                required
+              />
+              <span class="form-hint">Karakter awalan perintah bot (misal: .)</span>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">
+                <span>Kebijakan Kontak Baru</span>
+              </label>
+              <select
+                class="input"
+                value={accessMode}
+                onChange={(e) => setAccessMode((e.target as HTMLSelectElement).value)}
+              >
+                <option value="closed">Tertutup (Hanya Owner & Admin)</option>
+                <option value="auto_member">Member Otomatis (Publik)</option>
+                <option value="approval">Perlu Persetujuan Owner</option>
+              </select>
+              <span class="form-hint">Bagaimana bot menyikapi nomor baru yang belum terdaftar</span>
             </div>
           </div>
 
