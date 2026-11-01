@@ -19,6 +19,19 @@ import type {
   WAMessage,
   WASocket,
 } from 'onigis';
+import {
+  buildNativeFlowButtons,
+  sendInteractiveMessage,
+  type InteractiveButtonOptions,
+  type SendInteractiveOptions,
+} from './interactive.js';
+
+export {
+  buildNativeFlowButtons,
+  sendInteractiveMessage,
+  type InteractiveButtonOptions,
+  type SendInteractiveOptions,
+};
 
 type OnigisModule = typeof import('onigis');
 
@@ -179,21 +192,28 @@ export function extractText(content: Record<string, unknown> | null | undefined)
     if (typeof media?.caption === 'string') return media.caption;
   }
 
-  const buttonReply = message.buttonsResponseMessage as { selectedButtonId?: unknown } | undefined;
-  if (typeof buttonReply?.selectedButtonId === 'string') return buttonReply.selectedButtonId;
+  const buttonReply = message.buttonsResponseMessage as
+    | { selectedButtonId?: unknown; selectedDisplayText?: unknown }
+    | undefined;
+  if (typeof buttonReply?.selectedButtonId === 'string' && buttonReply.selectedButtonId.trim()) {
+    return buttonReply.selectedButtonId.trim();
+  }
+  if (typeof buttonReply?.selectedDisplayText === 'string' && buttonReply.selectedDisplayText.trim()) {
+    return buttonReply.selectedDisplayText.trim();
+  }
 
   const listReply = message.listResponseMessage as
     | { title?: unknown; singleSelectReply?: { selectedRowId?: unknown } }
     | undefined;
-  if (typeof listReply?.singleSelectReply?.selectedRowId === 'string') {
-    return listReply.singleSelectReply.selectedRowId;
+  if (typeof listReply?.singleSelectReply?.selectedRowId === 'string' && listReply.singleSelectReply.selectedRowId.trim()) {
+    return listReply.singleSelectReply.selectedRowId.trim();
   }
-  if (typeof listReply?.title === 'string') return listReply.title;
+  if (typeof listReply?.title === 'string' && listReply.title.trim()) return listReply.title.trim();
 
   const templateReply = message.templateButtonReplyMessage as
     | { selectedId?: unknown }
     | undefined;
-  if (typeof templateReply?.selectedId === 'string') return templateReply.selectedId;
+  if (typeof templateReply?.selectedId === 'string' && templateReply.selectedId.trim()) return templateReply.selectedId.trim();
 
   const interactive = message.interactiveResponseMessage as
     | { nativeFlowResponseMessage?: { paramsJson?: unknown } }
@@ -201,8 +221,15 @@ export function extractText(content: Record<string, unknown> | null | undefined)
   const paramsJson = interactive?.nativeFlowResponseMessage?.paramsJson;
   if (typeof paramsJson === 'string') {
     try {
-      const parsed = JSON.parse(paramsJson) as { id?: unknown };
-      if (typeof parsed.id === 'string') return parsed.id;
+      const parsed = JSON.parse(paramsJson) as {
+        id?: unknown;
+        row_id?: unknown;
+        selected_id?: unknown;
+        selectedRowId?: unknown;
+        title?: unknown;
+      };
+      const resId = parsed.id || parsed.row_id || parsed.selected_id || parsed.selectedRowId || parsed.title;
+      if (typeof resId === 'string' && resId.trim()) return resId.trim();
     } catch {
       // abaikan payload yang bukan JSON
     }
@@ -540,6 +567,32 @@ export class WhatsAppAdapter implements PlatformAdapter {
         `\`${this.commandPrefix}always ${request.shortCode}\` untuk setuju selalu.`,
     ].join('\n');
 
+    // 1. Coba kirim tombol interaktif Native Flow (modern Android/iOS WhatsApp)
+    try {
+      await sendInteractiveMessage(socket, this.module, ownerId, {
+        title: `🔐 Persetujuan ${request.shortCode}`,
+        body: [
+          `Dari: ${request.requesterRole} (${request.requesterJid})`,
+          `Aksi: ${request.toolName}`,
+          `Detail: ${JSON.stringify(request.params)}`,
+          `Berlaku sampai: ${expiry}`,
+        ].join('\n'),
+        footer: 'ArKzorMD · Persetujuan Owner',
+        buttons: [
+          { text: '✅ Setuju', id: `${this.commandPrefix}approve ${request.shortCode}` },
+          { text: '❌ Tolak', id: `${this.commandPrefix}reject ${request.shortCode}` },
+          { text: '⚡ Setuju Selalu', id: `${this.commandPrefix}always ${request.shortCode}` },
+        ],
+      });
+      return;
+    } catch (interactiveErr) {
+      this.options.logger.debug(
+        { err: interactiveErr, code: request.shortCode },
+        'Native flow approval gagal; mencoba fallback',
+      );
+    }
+
+    // 2. Fallback legacy rich-classic buttons jika tersedia
     const rich = this.module as unknown as RichClassicModule;
     if (typeof rich.buildButtonsMessage === 'function' && typeof rich.sendClassicMessage === 'function') {
       try {
@@ -566,12 +619,19 @@ export class WhatsAppAdapter implements PlatformAdapter {
       } catch (error) {
         this.options.logger.warn(
           { err: error, code: request.shortCode },
-          'Tombol approval gagal dikirim; memakai teks fallback',
+          'Tombol approval legacy gagal dikirim; memakai teks fallback',
         );
       }
     }
 
+    // 3. Fallback teks plain
     await this.send(ownerId, { text });
+  }
+
+  /** Kirim pesan interaktif Native Flow langsung lewat adapter */
+  async sendInteractive(chatId: string, options: SendInteractiveOptions): Promise<any> {
+    const socket = this.requireSocket();
+    return sendInteractiveMessage(socket, this.module, chatId, options);
   }
 
   getStatus(): ConnectionStatus {

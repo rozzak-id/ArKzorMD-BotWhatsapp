@@ -106,6 +106,7 @@ export interface MemoryStore {
   save(userJid: string, note: string): MemoryNote;
   search(userJid: string, query: string): MemoryNote[];
   list(userJid: string): MemoryNote[];
+  listAll?(limit?: number): MemoryNote[];
   delete(id: number): boolean;
   clear(userJid: string): number;
 }

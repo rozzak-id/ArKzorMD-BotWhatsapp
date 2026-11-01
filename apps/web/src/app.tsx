@@ -11,7 +11,8 @@ import { PlatformsPage } from './pages/platforms';
 import { SettingsPage } from './pages/settings';
 import { ToolsPage } from './pages/tools';
 import { UsersPage } from './pages/users';
-import { GroupsPage, MemoryPage, SetupPage } from './pages/placeholders';
+import { MemoryPage } from './pages/memory';
+import { GroupsPage, SetupPage } from './pages/placeholders';
 
 type RouteId =
   | 'dashboard'

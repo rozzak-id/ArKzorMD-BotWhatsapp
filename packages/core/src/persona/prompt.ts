@@ -90,6 +90,9 @@ export function buildSystemPrompt(input: Persona | SystemPromptContext): string 
   const toolList = formatToolList(context.tools);
 
   return template
+    .replace(/\{\{nama_persona\}\}/g, persona.name || botName)
+    .replace(/\{\{nama_proyek\}\}/g, 'ArKzorMD')
+    .replace(/\{\{role\}\}/g, `[${senderRole.toUpperCase()}]`)
     .replace(/\{\{bot_name\}\}/g, botName)
     .replace(/\{\{bot_number\}\}/g, botNumber)
     .replace(/\{\{persona\}\}/g, formatPersona(persona))

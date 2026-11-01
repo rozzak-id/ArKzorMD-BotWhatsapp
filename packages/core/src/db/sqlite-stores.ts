@@ -613,6 +613,23 @@ export class SqliteMemoryStore implements MemoryStore {
     }));
   }
 
+  listAll(limit = 100): MemoryNote[] {
+    const rows = this.db
+      .prepare('SELECT * FROM memory_notes ORDER BY id DESC LIMIT ?')
+      .all(limit) as Array<{
+      id: number;
+      user_jid: string;
+      note: string;
+      created_at: number;
+    }>;
+    return rows.map((r) => ({
+      id: r.id,
+      userJid: r.user_jid,
+      note: r.note,
+      createdAt: r.created_at,
+    }));
+  }
+
   delete(id: number): boolean {
     const result = this.db.prepare('DELETE FROM memory_notes WHERE id = ?').run(id);
     return result.changes > 0;

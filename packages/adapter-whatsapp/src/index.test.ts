@@ -183,4 +183,50 @@ describe('extractText', () => {
 
     expect(text).toBe('laporan.pdf');
   });
+
+  it('mengekstrak respon klik tombol native flow dan template button', () => {
+    // 1. Native flow quick reply
+    const text1 = extractText({
+      interactiveResponseMessage: {
+        nativeFlowResponseMessage: {
+          paramsJson: JSON.stringify({ id: '.approve #A7F3' }),
+        },
+      },
+    });
+    expect(text1).toBe('.approve #A7F3');
+
+    // 2. Native flow dengan selected_id / row_id
+    const text2 = extractText({
+      interactiveResponseMessage: {
+        nativeFlowResponseMessage: {
+          paramsJson: JSON.stringify({ selected_id: '.menu' }),
+        },
+      },
+    });
+    expect(text2).toBe('.menu');
+
+    // 3. Template button reply
+    const text3 = extractText({
+      templateButtonReplyMessage: {
+        selectedId: '.reject #B8C2',
+      },
+    });
+    expect(text3).toBe('.reject #B8C2');
+
+    // 4. Buttons response message
+    const text4 = extractText({
+      buttonsResponseMessage: {
+        selectedButtonId: '.always #C9D3',
+      },
+    });
+    expect(text4).toBe('.always #C9D3');
+
+    // 5. List response single select
+    const text5 = extractText({
+      listResponseMessage: {
+        singleSelectReply: { selectedRowId: '.status' },
+      },
+    });
+    expect(text5).toBe('.status');
+  });
 });

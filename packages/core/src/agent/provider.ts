@@ -91,8 +91,9 @@ export class MockProvider implements AiProvider {
       };
     }
 
-    const lastUser =
+    const rawUser =
       [...request.messages].reverse().find((message) => message.role === 'user')?.content ?? '';
+    const lastUser = rawUser.replace(/^\[(OWNER|ADMIN|MEMBER)\]\s*/i, '').trim();
 
     const available = new Set(request.tools.map((tool) => tool.name));
     const sendMatch = /kirim(?:\s+pesan)?\s+ke\s+(\+?[\d][\d\s-]{6,})[:\s]+(.+)/i.exec(lastUser);

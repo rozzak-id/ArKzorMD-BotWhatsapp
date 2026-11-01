@@ -143,6 +143,68 @@ export function registerApiRoutes(app: FastifyInstance, context: AppContext): vo
     whatsappMode: context.config.whatsappMode,
   }));
 
+  app.post('/api/settings/kill-switch', async (request, reply) => {
+    if (!requireAdminToken(context, request, reply)) return reply;
+    const body = request.body as { enabled?: boolean } | undefined;
+    const enabled = Boolean(body?.enabled);
+    context.stores.settings.set('kill_switch', String(enabled));
+    context.stores.audit.append({
+      actorJid: context.config.ownerJid,
+      action: enabled ? 'killswitch.enabled' : 'killswitch.disabled',
+      params: { via: 'web_ui' },
+      result: { enabled },
+      createdAt: Date.now(),
+    });
+    return { ok: true, killSwitch: enabled };
+  });
+
+  app.get('/api/memory', async (request) => {
+    const query = request.query as { jid?: string; limit?: string } | undefined;
+    if (query?.jid) {
+      return { notes: context.stores.memory.list(query.jid) };
+    }
+    const limit = query?.limit ? Math.min(200, Math.max(1, Number(query.limit))) : 100;
+    const notes = context.stores.memory.listAll ? context.stores.memory.listAll(limit) : [];
+    return { notes };
+  });
+
+  app.delete('/api/memory/:id', async (request, reply) => {
+    if (!requireAdminToken(context, request, reply)) return reply;
+    const params = request.params as { id?: string };
+    const id = Number(params.id);
+    if (isNaN(id)) return reply.code(400).send({ error: 'ID catatan tidak valid.' });
+    const ok = context.stores.memory.delete(id);
+    return { ok, id };
+  });
+
+  app.post('/api/personas/:id/activate', async (request, reply) => {
+    if (!requireAdminToken(context, request, reply)) return reply;
+    const params = request.params as { id?: string };
+    const id = params.id;
+    if (!id) return reply.code(400).send({ error: 'ID persona wajib diisi.' });
+    context.stores.personas.activate(id);
+    return { ok: true, activePersona: id };
+  });
+
+  app.post('/api/users/:jid/role', async (request, reply) => {
+    if (!requireAdminToken(context, request, reply)) return reply;
+    const params = request.params as { jid?: string };
+    const body = request.body as { role?: string } | undefined;
+    const jid = params.jid;
+    const role = body?.role;
+    if (!jid || !['owner', 'admin', 'member'].includes(role ?? '')) {
+      return reply.code(400).send({ error: 'JID dan role (owner|admin|member) wajib diisi.' });
+    }
+    const existing = context.stores.users.get(jid);
+    context.stores.users.upsert({
+      jid,
+      name: existing?.name ?? null,
+      role: role as any,
+      status: existing?.status ?? 'active',
+    });
+    return { ok: true, jid, role };
+  });
+
   app.post('/api/dev/inbound', async (request, reply) => {
     if (context.config.nodeEnv === 'production' || context.config.whatsappMode !== 'mock') {
       return reply.code(404).send({ error: 'Endpoint pengembangan tidak tersedia.' });

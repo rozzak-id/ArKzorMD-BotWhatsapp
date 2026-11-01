@@ -36,4 +36,16 @@ export const api = {
   tools: () => request<ToolResponse>('/api/tools'),
   audit: (limit = 50) => request<AuditResponse>(`/api/audit?limit=${limit}`),
   settings: () => request<SettingsResponse>('/api/settings'),
+  memory: (limit = 100) => request<{ notes: Array<{ id: number; userJid: string; note: string; createdAt: number }> }>(`/api/memory?limit=${limit}`),
+  deleteMemory: (id: number, token?: string) =>
+    request<{ ok: boolean; id: number }>(`/api/memory/${id}`, {
+      method: 'DELETE',
+      headers: token ? { 'x-admin-token': token } : {},
+    }),
+  toggleKillSwitch: (enabled: boolean, token?: string) =>
+    request<{ ok: boolean; killSwitch: boolean }>('/api/settings/kill-switch', {
+      method: 'POST',
+      body: JSON.stringify({ enabled }),
+      headers: token ? { 'x-admin-token': token } : {},
+    }),
 };

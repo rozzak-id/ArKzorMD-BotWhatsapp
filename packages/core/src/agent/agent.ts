@@ -41,16 +41,43 @@ export interface AgentDependencies {
   services?: any;
 }
 
+export function compactHistory(history: StoredMessage[], maxRecent = 10): AiMessage[] {
+  if (history.length <= maxRecent) {
+    return history.map((item) => ({
+      role: item.role === 'assistant' ? 'assistant' : item.role === 'tool' ? 'tool' : 'user',
+      content: item.content,
+    }));
+  }
+
+  const older = history.slice(0, history.length - maxRecent);
+  const recent = history.slice(history.length - maxRecent);
+
+  const summaryLines = older.map((m) => {
+    const roleLabel = m.role === 'assistant' ? 'Bot' : 'User';
+    const snippet = m.content.length > 80 ? `${m.content.slice(0, 80)}...` : m.content;
+    return `${roleLabel}: ${snippet}`;
+  });
+
+  const summaryMessage: AiMessage = {
+    role: 'system',
+    content: `[Ringkasan riwayat percakapan sebelumnya]\n${summaryLines.join('\n')}`,
+  };
+
+  const recentMessages: AiMessage[] = recent.map((item) => ({
+    role: item.role === 'assistant' ? 'assistant' : item.role === 'tool' ? 'tool' : 'user',
+    content: item.content,
+  }));
+
+  return [summaryMessage, ...recentMessages];
+}
+
 function toAiMessages(
   input: AgentRunInput,
   tools: ToolDefinition[],
   botName?: string,
   botNumber?: string,
 ): AiMessage[] {
-  const history: AiMessage[] = input.history.map((item) => ({
-    role: item.role === 'assistant' ? 'assistant' : item.role === 'tool' ? 'tool' : 'user',
-    content: item.content,
-  }));
+  const history: AiMessage[] = compactHistory(input.history, 10);
 
   const systemPrompt = buildSystemPrompt({
     botName,
@@ -64,10 +91,13 @@ function toAiMessages(
     tools,
   });
 
+  const roleTag = input.role ? `[${input.role.toUpperCase()}] ` : '';
+  const userContent = input.message.text ? `${roleTag}${input.message.text}` : '[pesan media]';
+
   return [
     { role: 'system', content: systemPrompt },
     ...history,
-    { role: 'user', content: input.message.text || '[pesan media]' },
+    { role: 'user', content: userContent },
   ];
 }
 
