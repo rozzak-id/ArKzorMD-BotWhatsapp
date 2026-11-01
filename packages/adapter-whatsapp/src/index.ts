@@ -72,6 +72,8 @@ export interface WhatsAppAdapterOptions {
   moduleName?: string;
   /** Prefix command untuk tombol approval; default `.`. */
   commandPrefix?: string;
+  /** Izinkan owner mengontrol bot langsung dari nomor akun bot itu sendiri (Self Mode). Default true. */
+  allowSelfControl?: boolean;
   onQr?: (qr: string) => void;
   onStatusChange?: (status: ConnectionStatus) => void;
 }
@@ -281,10 +283,25 @@ function extractMedia(content: Record<string, unknown>): MediaAttachment[] {
 /** Ubah WAMessage onigis menjadi InternalMessage netral platform. */
 export function normalizeIncomingMessage(
   raw: WAMessage,
-  options: { botJid?: string | null } = {},
+  options: {
+    botJid?: string | null;
+    allowSelfControl?: boolean;
+    sentMessageIds?: Set<string>;
+  } = {},
 ): InternalMessage | null {
   const key = raw.key;
-  if (!key?.remoteJid || !key.id || key.fromMe) return null;
+  if (!key?.remoteJid || !key.id) return null;
+
+  if (key.fromMe) {
+    // Abaikan jika pesan ini dikirim otomatis oleh bot itu sendiri
+    if (options.sentMessageIds && options.sentMessageIds.has(key.id)) {
+      return null;
+    }
+    // Abaikan jika self control tidak diizinkan
+    if (!options.allowSelfControl) {
+      return null;
+    }
+  }
 
   const chatId = normalizeUserJid(key.remoteJid);
   if (isIgnoredJid(chatId)) return null;
@@ -307,10 +324,16 @@ export function normalizeIncomingMessage(
   if (!text && media.length === 0) return null;
 
   const isGroup = isGroupJid(chatId);
-  const primarySender = isGroup
-    ? (key.participant ?? key.participantAlt ?? chatId)
-    : chatId;
-  const senderAlt = isGroup ? (key.participantAlt ?? key.remoteJidAlt) : key.remoteJidAlt;
+  const primarySender = key.fromMe
+    ? (options.botJid ? normalizeUserJid(options.botJid) : chatId)
+    : isGroup
+      ? (key.participant ?? key.participantAlt ?? chatId)
+      : chatId;
+  const senderAlt = key.fromMe
+    ? undefined
+    : isGroup
+      ? (key.participantAlt ?? key.remoteJidAlt)
+      : key.remoteJidAlt;
   const senderId = pickSenderJid(primarySender, senderAlt);
   const contextInfo = contextInfoOf(content);
   const quotedContent = unwrapContent(
@@ -388,6 +411,16 @@ export class WhatsAppAdapter implements PlatformAdapter {
   private readonly commandPrefix: string;
   private readonly recent = new Map<string, RecentMessage>();
   private readonly seen = new Set<string>();
+  private readonly sentMessageIds = new Set<string>();
+
+  private markSentId(id?: string | null): void {
+    if (!id) return;
+    this.sentMessageIds.add(id);
+    if (this.sentMessageIds.size > 2000) {
+      const oldest = this.sentMessageIds.values().next().value;
+      if (oldest) this.sentMessageIds.delete(oldest);
+    }
+  }
 
   constructor(private readonly options: WhatsAppAdapterOptions) {
     this.moduleName = options.moduleName ?? 'onigis';
@@ -605,13 +638,15 @@ export class WhatsAppAdapter implements PlatformAdapter {
           await socket.sendMessage(chatId, mediaContent, quoted ? { quoted } : undefined);
         }
         if (content.text && (!sentMedia || !captionUsed)) {
-          await socket.sendMessage(chatId, { text: content.text }, quoted ? { quoted } : undefined);
+          const sent = await socket.sendMessage(chatId, { text: content.text }, quoted ? { quoted } : undefined);
+          this.markSentId(sent?.key?.id);
         }
         return;
       }
 
       if (content.text) {
-        await socket.sendMessage(chatId, { text: content.text }, quoted ? { quoted } : undefined);
+        const sent = await socket.sendMessage(chatId, { text: content.text }, quoted ? { quoted } : undefined);
+        this.markSentId(sent?.key?.id);
       }
     });
   }
@@ -899,7 +934,11 @@ export class WhatsAppAdapter implements PlatformAdapter {
       }
     }
 
-    const message = normalizeIncomingMessage(raw, { botJid: this.botJid });
+    const message = normalizeIncomingMessage(raw, {
+      botJid: this.botJid,
+      allowSelfControl: this.options.allowSelfControl ?? true,
+      sentMessageIds: this.sentMessageIds,
+    });
     if (!message) return;
 
     if (isLidJid(message.senderId) && this.socket) {

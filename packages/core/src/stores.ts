@@ -60,6 +60,7 @@ export interface PersonaStore {
   getActive(): Persona | undefined;
   upsert(persona: Persona): Persona;
   activate(id: string): void;
+  delete?(id: string): boolean;
   getAssignment?(scope: 'chat' | 'group', scopeId: string): string | undefined;
   setAssignment?(scope: 'chat' | 'group', scopeId: string, personaId: string | null): void;
 }
@@ -87,6 +88,7 @@ export interface ApprovalStore {
 export interface AuditStore {
   append(entry: Omit<AuditEntry, 'id'>): void;
   list(limit: number): AuditEntry[];
+  clearAll?(): void;
 }
 
 export interface SettingsStore {
@@ -111,4 +113,5 @@ export interface MemoryStore {
   listAll?(limit?: number): MemoryNote[];
   delete(id: number): boolean;
   clear(userJid: string): number;
+  clearAll?(): void;
 }

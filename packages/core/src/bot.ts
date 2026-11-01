@@ -18,7 +18,7 @@ import type { PermissionEngine } from './security/permission-engine.js';
 import type { CommandRegistry, CommandServices } from './router/command-registry.js';
 import type { MessageRouter } from './router/router.js';
 import type { AgentOrchestrator } from './agent/agent.js';
-import { AiProviderError } from './agent/provider.js';
+import { AiProviderError, type AiProvider } from './agent/provider.js';
 import type { Humanizer } from './humanizer/humanizer.js';
 import type { RateLimiter } from './rate-limit/rate-limiter.js';
 import type { ToolRegistry } from './tools/registry.js';
@@ -97,6 +97,11 @@ export class Bot {
       this.sweepTimer = null;
     }
     this.deps.approvals.onRequest = null;
+  }
+
+  updateAiProvider(provider: AiProvider): void {
+    this.deps.aiProviderId = provider.id;
+    this.deps.agent.setProvider(provider);
   }
 
   private async handleSafely(message: InternalMessage): Promise<void> {
@@ -234,6 +239,16 @@ export class Bot {
   ): Promise<{ user?: User; ignored?: string }> {
     const existing = this.deps.users.get(message.senderId);
     if (existing) return { user: existing };
+
+    if (this.deps.config.ownerJid && message.senderId === this.deps.config.ownerJid) {
+      const created = this.deps.users.upsert({
+        jid: message.senderId,
+        name: message.senderName ?? 'Owner',
+        role: 'owner',
+        status: 'active',
+      });
+      return { user: created };
+    }
 
     const { accessMode } = this.deps.config;
     if (accessMode === 'auto-member') {

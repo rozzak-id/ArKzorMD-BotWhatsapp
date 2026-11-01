@@ -125,11 +125,14 @@ export interface SettingsResponse {
   accessMode: string;
   defaultChatMode: string;
   killSwitch: boolean;
+  selfControl?: boolean;
   rateLimitPerMinute: number;
   aiProvider: string;
   aiModel: string;
+  aiBaseUrl?: string;
   aiFallbackModel: string | null;
   aiTimeoutMs: number;
+  hasApiKey?: boolean;
   whatsappMode: string;
 }
 

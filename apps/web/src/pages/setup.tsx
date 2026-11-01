@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'preact/hooks';
 import QRCode from 'qrcode';
 import { api, setAuthToken } from '../api';
-import { Badge, Card, ErrorNote, Loading, StatusPill } from '../components';
+import { Badge, Card, ErrorNote, Icons, Loading, StatusPill } from '../components';
 import type { Persona, StatusResponse } from '../types';
 
 interface SetupPageProps {
@@ -31,7 +31,13 @@ function PairingQr({ value }: { value: string }) {
 
   return (
     <div style={{ textAlign: 'center', margin: '1rem 0' }}>
-      {src ? <img src={src} width={240} height={240} alt="QR Code" /> : <Loading />}
+      {src ? (
+        <div class="qr-frame" style={{ display: 'inline-block', padding: '12px', background: '#ffffff', borderRadius: '12px' }}>
+          <img src={src} width={240} height={240} alt="QR Code WhatsApp" style={{ display: 'block' }} />
+        </div>
+      ) : (
+        <Loading text="Membuat QR Code WhatsApp…" />
+      )}
     </div>
   );
 }
@@ -46,9 +52,14 @@ export function SetupPage({ status, onFinish }: SetupPageProps) {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
 
-  // Step 2: AI Provider
+  // Step 2: AI Provider & API Key
   const [aiProvider, setAiProvider] = useState(status?.ai.provider ?? 'gemini');
-  const [aiModel, setAiModel] = useState(status?.ai.model ?? 'gemini-1.5-flash');
+  const [aiModel, setAiModel] = useState(status?.ai.model ?? 'gemini-2.5-flash');
+  const [aiBaseUrl, setAiBaseUrl] = useState('https://generativelanguage.googleapis.com/v1beta');
+  const [aiApiKey, setAiApiKey] = useState('');
+  const [showApiKey, setShowApiKey] = useState(false);
+  const [testingAi, setTestingAi] = useState(false);
+  const [testResult, setTestResult] = useState<{ ok: boolean; latencyMs?: number; reply?: string; error?: string } | null>(null);
 
   // Step 3: WhatsApp
   const [waMethod, setWaMethod] = useState<'qr' | 'code'>('qr');
@@ -66,6 +77,11 @@ export function SetupPage({ status, onFinish }: SetupPageProps) {
   // Step 5: Persona & Access Mode
   const [personas, setPersonas] = useState<Persona[]>([]);
   const [selectedPersona, setSelectedPersona] = useState<string>('');
+  const [personaMode, setPersonaMode] = useState<'preset' | 'custom'>('preset');
+  const [customName, setCustomName] = useState('');
+  const [customStyle, setCustomStyle] = useState('santai');
+  const [customGreeting, setCustomGreeting] = useState('');
+  const [customPrompt, setCustomPrompt] = useState('');
   const [accessMode, setAccessMode] = useState<'closed' | 'auto_member' | 'approval'>('closed');
 
   // Step 6: Test Message
@@ -83,11 +99,31 @@ export function SetupPage({ status, onFinish }: SetupPageProps) {
     // Cek status auth
     api.authStatus().then((auth) => {
       if (auth.setupCompleted) {
-        // Jika sudah setup, lompat ke step selanjutnya
         if (auth.hasOwner) setOwnerVerified(true);
       }
     }).catch(() => {});
   }, []);
+
+  const handleProviderSelect = (provider: string) => {
+    setAiProvider(provider);
+    setTestResult(null);
+    if (provider === '9router') {
+      setAiBaseUrl('http://localhost:20128/v1');
+      setAiModel('auto');
+    } else if (provider === 'gemini') {
+      setAiBaseUrl('https://generativelanguage.googleapis.com/v1beta');
+      setAiModel('gemini-2.5-flash');
+    } else if (provider === 'openai') {
+      setAiBaseUrl('https://api.openai.com/v1');
+      setAiModel('gpt-4o-mini');
+    } else if (provider === 'openrouter') {
+      setAiBaseUrl('https://openrouter.ai/api/v1');
+      setAiModel('deepseek/deepseek-chat');
+    } else if (provider === 'ollama') {
+      setAiBaseUrl('http://localhost:11434/v1');
+      setAiModel('llama3.2');
+    }
+  };
 
   async function handleStep1Submit(e: Event) {
     e.preventDefault();
@@ -106,8 +142,49 @@ export function SetupPage({ status, onFinish }: SetupPageProps) {
       if (res.token) {
         setAuthToken(res.token);
       }
-      setSuccessNote('Password admin berhasil disimpan!');
+      setSuccessNote('Password admin berhasil dibuat.');
       setStep(2);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleTestAiStep2() {
+    setTestingAi(true);
+    setTestResult(null);
+    setError(null);
+    try {
+      const res = await api.testAi({
+        aiProvider,
+        aiModel,
+        aiBaseUrl: aiBaseUrl.trim() || undefined,
+        aiApiKey: aiApiKey.trim() || undefined,
+      });
+      setTestResult(res);
+    } catch (err) {
+      setTestResult({
+        ok: false,
+        error: err instanceof Error ? err.message : String(err),
+      });
+    } finally {
+      setTestingAi(false);
+    }
+  }
+
+  async function handleSaveStep2AndNext() {
+    setLoading(true);
+    setError(null);
+    try {
+      await api.updateSettings({
+        aiProvider,
+        aiModel,
+        aiBaseUrl: aiBaseUrl.trim() || undefined,
+        aiApiKey: aiApiKey.trim() || undefined,
+      });
+      setSuccessNote('Konfigurasi AI berhasil disimpan!');
+      setStep(3);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -179,8 +256,8 @@ export function SetupPage({ status, onFinish }: SetupPageProps) {
     try {
       const res = await api.requestOwnerCode(ownerPhone);
       setOwnerVerificationCode(res.code);
-      setInputCode(res.code); // auto-fill untuk kenyamanan wizard
-      setSuccessNote('Kode verifikasi dibuat: ' + res.code);
+      setInputCode(res.code);
+      setSuccessNote('Kode verifikasi Owner dibuat: ' + res.code);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -210,11 +287,32 @@ export function SetupPage({ status, onFinish }: SetupPageProps) {
     setLoading(true);
     setError(null);
     try {
+      let finalPersonaId = selectedPersona;
+
+      // Jika user membuat persona kustom di wizard
+      if (personaMode === 'custom' && customName.trim()) {
+        const slug = customName.trim().toLowerCase().replace(/[^a-z0-9]/g, '-');
+        const customPersona = {
+          id: slug || `custom-${Date.now().toString(36)}`,
+          name: customName.trim(),
+          style: customStyle.trim(),
+          language: 'id',
+          typingDelay: 'natural',
+          greeting: customGreeting.trim() || undefined,
+          forbiddenTopics: [],
+          extraInstructions: customPrompt.trim() || undefined,
+        };
+        const created = await api.createPersona(customPersona);
+        if (created?.persona?.id) {
+          finalPersonaId = created.persona.id;
+        }
+      }
+
       await api.finalizeSetup({
-        personaId: selectedPersona || undefined,
+        personaId: finalPersonaId || undefined,
         accessMode,
       });
-      setSuccessNote('Setup berhasil disimpan!');
+      setSuccessNote('Setup wizard berhasil diselesaikan!');
       setStep(6);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -248,19 +346,22 @@ export function SetupPage({ status, onFinish }: SetupPageProps) {
 
   const stepsMeta = [
     '1. Password Admin',
-    '2. AI Provider',
+    '2. AI Provider & Key',
     '3. WhatsApp',
     '4. Verifikasi Owner',
     '5. Persona & Akses',
-    '6. Uji Coba',
+    '6. Uji Coba & Selesai',
   ];
 
   return (
-    <div style={{ maxWidth: '800px', margin: '0 auto' }}>
-      <header style={{ marginBottom: '1.5rem', textAlign: 'center' }}>
-        <h1 style={{ fontSize: '1.75rem', marginBottom: '0.5rem' }}>Setup Wizard ArKzorMD</h1>
+    <div style={{ maxWidth: '840px', margin: '0 auto', width: '100%' }}>
+      <header style={{ marginBottom: '1.75rem', textAlign: 'center' }}>
+        <h1 style={{ fontSize: '1.85rem', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}>
+          <Icons.Robot width={24} height={24} />
+          <span>Setup Wizard ArKzorMD</span>
+        </h1>
         <p class="muted">
-          Instalasi dan konfigurasi mandiri dalam 6 langkah cepat di bawah 10 menit tanpa perlu edit file.
+          Konfigurasi mandiri dalam 6 langkah cepat di bawah 10 menit tanpa perlu edit file server manual.
         </p>
 
         {/* Progress bar */}
@@ -274,14 +375,15 @@ export function SetupPage({ status, onFinish }: SetupPageProps) {
                 key={label}
                 style={{
                   flex: 1,
-                  padding: '0.5rem 0.25rem',
+                  padding: '0.6rem 0.25rem',
                   fontSize: '0.75rem',
                   fontWeight: 600,
                   borderBottom: `3px solid ${
-                    isDone ? 'var(--color-ok, #22c55e)' : isCurrent ? 'var(--color-primary, #3b82f6)' : 'var(--border, #e5e7eb)'
+                    isDone ? 'var(--color-ok, #10b981)' : isCurrent ? 'var(--accent, #10b981)' : 'var(--border)'
                   }`,
-                  color: isCurrent ? 'var(--text-main)' : 'var(--text-muted)',
+                  color: isCurrent ? 'var(--text)' : 'var(--muted)',
                   cursor: isDone ? 'pointer' : 'default',
+                  transition: 'border-color var(--duration-fast)',
                 }}
                 onClick={() => {
                   if (isDone) setStep(stepNum);
@@ -296,93 +398,184 @@ export function SetupPage({ status, onFinish }: SetupPageProps) {
 
       <ErrorNote message={error} />
       {successNote && (
-        <div class="banner ok" style={{ marginBottom: '1rem' }}>
-          {successNote}
+        <div class="banner ok" style={{ marginBottom: '1.25rem' }}>
+          <Icons.CheckCircle width={16} height={16} />
+          <span>{successNote}</span>
         </div>
       )}
 
       {/* Step 1: Buat password admin */}
       {step === 1 && (
-        <Card title="Langkah 1: Buat Password Admin Web UI">
+        <Card title="Langkah 1: Buat Password Admin Web UI" icon={<Icons.Key width={16} height={16} />}>
           <p class="muted" style={{ marginBottom: '1.25rem' }}>
-            Password ini digunakan untuk mengamankan Web UI, menyetujui izin sensitif, dan mengelola konfigurasi bot.
+            Password ini digunakan untuk mengamankan Web UI, menyetujui izin sensitif, dan mengelola bot.
           </p>
           <form onSubmit={handleStep1Submit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-            <label>
-              <span class="small muted">Password Admin (minimal 8 karakter):</span>
+            <div class="form-group">
+              <label class="form-label">
+                <span>Password Admin (minimal 8 karakter)</span>
+              </label>
               <input
                 type="password"
                 class="input"
-                style={{ width: '100%', marginTop: '0.25rem' }}
                 value={password}
                 onInput={(e) => setPassword((e.target as HTMLInputElement).value)}
-                placeholder="Minimal 8 karakter"
+                placeholder="Minimal 8 karakter acak kuat"
                 required
               />
-            </label>
-            <label>
-              <span class="small muted">Konfirmasi Password:</span>
+            </div>
+            <div class="form-group">
+              <label class="form-label">
+                <span>Konfirmasi Password</span>
+              </label>
               <input
                 type="password"
                 class="input"
-                style={{ width: '100%', marginTop: '0.25rem' }}
                 value={confirmPassword}
                 onInput={(e) => setConfirmPassword((e.target as HTMLInputElement).value)}
                 placeholder="Ulangi password di atas"
                 required
               />
-            </label>
+            </div>
             <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
               <button type="submit" class="btn btn-primary" disabled={loading}>
-                {loading ? 'Menyimpan…' : 'Simpan & Lanjutkan →'}
+                <span>{loading ? 'Menyimpan…' : 'Simpan & Lanjutkan →'}</span>
               </button>
             </div>
           </form>
         </Card>
       )}
 
-      {/* Step 2: AI Provider */}
+      {/* Step 2: AI Provider & API Key */}
       {step === 2 && (
-        <Card title="Langkah 2: Pilih AI Provider">
+        <Card title="Langkah 2: Pilih AI Provider & Masukkan API Key" icon={<Icons.Cpu width={16} height={16} />}>
           <p class="muted" style={{ marginBottom: '1.25rem' }}>
-            Pilih model AI utama yang akan memproses pesan dan mengeksekusi tools.
+            Pilih penyedia LLM utama, konfigurasi endpoint (tersedia 9Router lokal, Gemini, OpenAI, OpenRouter), dan isi API Key.
           </p>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-            <label>
-              <span class="small muted">Penyedia AI:</span>
-              <select
-                class="input"
-                style={{ width: '100%', marginTop: '0.25rem' }}
-                value={aiProvider}
-                onChange={(e) => setAiProvider((e.target as HTMLSelectElement).value)}
-              >
-                <option value="gemini">Google Gemini (Disarankan, cepat & hemat)</option>
-                <option value="openai">OpenAI (GPT-4o, GPT-4o-mini)</option>
-                <option value="openrouter">OpenRouter (Mendukung Claude, Llama 3, DeepSeek, dll)</option>
-                <option value="ollama">Ollama (Model Lokal Offline)</option>
-                <option value="mock">Mock Provider (Simulasi Pengembangan)</option>
-              </select>
-            </label>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
+            <div class="grid grid-2">
+              <div class="form-group">
+                <label class="form-label">
+                  <span>Penyedia AI</span>
+                </label>
+                <select
+                  class="input"
+                  value={aiProvider}
+                  onChange={(e) => handleProviderSelect((e.target as HTMLSelectElement).value)}
+                >
+                  <option value="9router">9Router (Local AI Gateway · :20128)</option>
+                  <option value="gemini">Google Gemini (Disarankan, cepat & hemat)</option>
+                  <option value="openai">OpenAI (GPT-4o, GPT-4o-mini)</option>
+                  <option value="openrouter">OpenRouter (Claude, DeepSeek, Llama)</option>
+                  <option value="ollama">Ollama (Model Lokal Offline)</option>
+                  <option value="custom">Custom OpenAI-Compatible API</option>
+                  <option value="mock">Mock Provider (Simulasi Uji Coba)</option>
+                </select>
+                <span class="form-hint">
+                  {aiProvider === '9router' && 'Gunakan 9Router local gateway port 20128. Tanpa kuota cloud.'}
+                  {aiProvider === 'gemini' && 'Resmi Google Gemini. Sangat disarankan untuk multimodal WhatsApp.'}
+                  {aiProvider === 'openai' && 'Model GPT-4o resmi dari OpenAI platform.'}
+                </span>
+              </div>
 
-            <label>
-              <span class="small muted">Model:</span>
-              <input
-                type="text"
-                class="input"
-                style={{ width: '100%', marginTop: '0.25rem' }}
-                value={aiModel}
-                onInput={(e) => setAiModel((e.target as HTMLInputElement).value)}
-                placeholder="Contoh: gemini-1.5-flash atau gpt-4o-mini"
-              />
-            </label>
+              <div class="form-group">
+                <label class="form-label">
+                  <span>Nama Model</span>
+                </label>
+                <input
+                  type="text"
+                  class="input"
+                  value={aiModel}
+                  onInput={(e) => setAiModel((e.target as HTMLInputElement).value)}
+                  placeholder="Contoh: gemini-2.5-flash, auto, gpt-4o-mini"
+                  required
+                />
+              </div>
+            </div>
 
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '1rem' }}>
+            <div class="grid grid-2">
+              <div class="form-group">
+                <label class="form-label">
+                  <span>Base URL Endpoint</span>
+                </label>
+                <input
+                  type="text"
+                  class="input"
+                  value={aiBaseUrl}
+                  onInput={(e) => setAiBaseUrl((e.target as HTMLInputElement).value)}
+                  placeholder="https://generativelanguage.googleapis.com/v1beta"
+                />
+              </div>
+
+              <div class="form-group">
+                <label class="form-label">
+                  <span>API Key</span>
+                </label>
+                <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                  {showApiKey ? (
+                    <input
+                      type="text"
+                      class="input"
+                      style={{ width: '100%', paddingRight: '44px' }}
+                      value={aiApiKey}
+                      onInput={(e) => setAiApiKey((e.target as HTMLInputElement).value)}
+                      placeholder={aiProvider === '9router' || aiProvider === 'ollama' ? 'Opsional untuk 9Router / Ollama' : 'Tempelkan API Key di sini'}
+                    />
+                  ) : (
+                    <input
+                      type="password"
+                      class="input"
+                      style={{ width: '100%', paddingRight: '44px' }}
+                      value={aiApiKey}
+                      onInput={(e) => setAiApiKey((e.target as HTMLInputElement).value)}
+                      placeholder={aiProvider === '9router' || aiProvider === 'ollama' ? 'Opsional untuk 9Router / Ollama' : 'Tempelkan API Key di sini'}
+                    />
+                  )}
+                  <button
+                    type="button"
+                    class="btn btn-secondary btn-sm"
+                    style={{ position: 'absolute', right: '4px', padding: '6px 8px' }}
+                    onClick={() => setShowApiKey(!showApiKey)}
+                    title={showApiKey ? 'Sembunyikan' : 'Tampilkan'}
+                  >
+                    {showApiKey ? <Icons.EyeOff width={14} height={14} /> : <Icons.Eye width={14} height={14} />}
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {testResult && (
+              <div class={`banner ${testResult.ok ? 'ok' : 'danger'}`} style={{ padding: '10px 14px' }}>
+                <strong>{testResult.ok ? `✓ Koneksi AI Berhasil (${testResult.latencyMs}ms)` : '✕ Koneksi Gagal'}</strong>
+                <p class="small" style={{ margin: '2px 0 0' }}>
+                  {testResult.ok ? `Balasan: "${testResult.reply}"` : testResult.error}
+                </p>
+              </div>
+            )}
+
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.75rem' }}>
               <button type="button" class="btn btn-secondary" onClick={() => setStep(1)}>
                 ← Kembali
               </button>
-              <button type="button" class="btn btn-primary" onClick={() => setStep(3)}>
-                Lanjut ke WhatsApp →
-              </button>
+              <div style={{ display: 'flex', gap: '10px' }}>
+                <button
+                  type="button"
+                  class="btn btn-secondary"
+                  onClick={handleTestAiStep2}
+                  disabled={testingAi || loading}
+                >
+                  <Icons.Activity width={14} height={14} />
+                  <span>{testingAi ? 'Menguji…' : 'Uji Koneksi AI'}</span>
+                </button>
+                <button
+                  type="button"
+                  class="btn btn-primary"
+                  onClick={handleSaveStep2AndNext}
+                  disabled={loading}
+                >
+                  <span>{loading ? 'Menyimpan…' : 'Lanjut ke WhatsApp →'}</span>
+                </button>
+              </div>
             </div>
           </div>
         </Card>
@@ -390,7 +583,7 @@ export function SetupPage({ status, onFinish }: SetupPageProps) {
 
       {/* Step 3: Hubungkan WhatsApp */}
       {step === 3 && (
-        <Card title="Langkah 3: Hubungkan WhatsApp">
+        <Card title="Langkah 3: Hubungkan WhatsApp" icon={<Icons.WhatsApp width={16} height={16} />}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
             <StatusPill status={status?.connection.status ?? null} />
             <Badge tone={status?.connection.mode === 'live' ? 'ok' : 'warn'}>
@@ -404,104 +597,78 @@ export function SetupPage({ status, onFinish }: SetupPageProps) {
               class={`btn btn-sm ${waMethod === 'qr' ? 'btn-primary' : 'btn-secondary'}`}
               onClick={() => setWaMethod('qr')}
             >
-              Pindai QR
+              <Icons.QrCode width={13} height={13} />
+              <span>Pindai QR Code</span>
             </button>
             <button
               type="button"
               class={`btn btn-sm ${waMethod === 'code' ? 'btn-primary' : 'btn-secondary'}`}
               onClick={() => setWaMethod('code')}
             >
-              Pairing Code (8 Digit)
+              <Icons.Key width={13} height={13} />
+              <span>Pairing Code (8 Digit)</span>
             </button>
           </div>
 
           {status?.connection.status === 'connected' ? (
             <div class="banner ok" style={{ textAlign: 'center', padding: '1.5rem' }}>
-              <strong>✓ WhatsApp Sudah Terhubung!</strong>
-              <p class="small muted" style={{ marginTop: '0.5rem' }}>
-                Sesi WhatsApp aktif tersimpan di server.
+              <Icons.CheckCircle width={24} height={24} />
+              <strong style={{ display: 'block', margin: '8px 0 4px', fontSize: '16px' }}>WhatsApp Sudah Terhubung!</strong>
+              <p class="muted small" style={{ margin: 0 }}>
+                Bot telah terotentikasi dan siap memproses pesan WhatsApp.
               </p>
               <button
                 type="button"
-                class="btn btn-secondary btn-sm"
+                class="btn btn-danger btn-sm"
                 style={{ marginTop: '1rem' }}
-                onClick={handleDisconnectWhatsApp}
+                onClick={() => void handleDisconnectWhatsApp()}
                 disabled={connectingWa}
               >
-                {connectingWa ? 'Memutuskan…' : 'Putuskan / Ganti Akun WhatsApp'}
+                Putuskan Sambungan
               </button>
             </div>
           ) : waMethod === 'qr' ? (
-            status?.connection.qr ? (
-              <div style={{ textAlign: 'center' }}>
-                <PairingQr value={status.connection.qr} />
-                <p class="muted small" style={{ marginTop: '0.5rem' }}>
-                  Buka WhatsApp di HP → <strong>Perangkat Tertaut</strong> → <strong>Tautkan Perangkat</strong> → Pindai QR di atas.
-                </p>
-                <div style={{ marginTop: '0.75rem' }}>
-                  <button
-                    type="button"
-                    class="btn btn-secondary btn-sm"
-                    onClick={async () => {
-                      await handleDisconnectWhatsApp().catch(() => {});
-                      await handleConnectWhatsApp();
-                    }}
-                    disabled={connectingWa}
-                  >
-                    {connectingWa ? 'Memuat ulang…' : 'Muat Ulang QR'}
-                  </button>
-                </div>
-              </div>
-            ) : status?.connection.status === 'connecting' ? (
-              <div style={{ textAlign: 'center', padding: '2rem' }}>
-                <div class="qr-placeholder" aria-label="Menunggu QR">
-                  <span>QR</span>
-                  <p>Menghubungkan ke WhatsApp dan menunggu QR dari server…</p>
-                </div>
-                <p class="muted small" style={{ marginTop: '0.5rem' }}>
-                  QR akan muncul di sini secara otomatis.
-                </p>
-              </div>
-            ) : (
-              <div style={{ textAlign: 'center', padding: '1.5rem' }}>
-                <div class="qr-placeholder" aria-label="WhatsApp belum terhubung">
-                  <span>QR</span>
-                  <p>
-                    {status?.connection.lastError
-                      ? `Koneksi terputus: ${status.connection.lastError}`
-                      : 'WhatsApp saat ini belum terhubung.'}
+            <div style={{ textAlign: 'center' }}>
+              {status?.connection.qr ? (
+                <>
+                  <p class="small muted" style={{ marginBottom: '0.5rem' }}>
+                    Buka WhatsApp di ponsel → Menu ⋮ / Pengaturan → <strong>Perangkat Tertaut</strong> → <strong>Tautkan Perangkat</strong>.
                   </p>
-                </div>
-                <div style={{ marginTop: '1rem' }}>
+                  <PairingQr value={status.connection.qr} />
+                </>
+              ) : (
+                <div style={{ padding: '2rem 1rem', background: 'var(--surface-sunken)', borderRadius: '8px' }}>
+                  <p class="muted" style={{ marginBottom: '1rem' }}>
+                    Socket WhatsApp belum aktif atau QR Code belum dimuat.
+                  </p>
                   <button
                     type="button"
                     class="btn btn-primary"
-                    onClick={handleConnectWhatsApp}
+                    onClick={() => void handleConnectWhatsApp()}
                     disabled={connectingWa}
                   >
-                    {connectingWa ? 'Menghubungkan…' : 'Hubungkan & Tampilkan QR'}
+                    <Icons.Refresh width={14} height={14} />
+                    <span>{connectingWa ? 'Memulai koneksi…' : 'Mulai / Muat QR Code'}</span>
                   </button>
                 </div>
-                <p class="muted small" style={{ marginTop: '0.5rem' }}>
-                  Klik tombol di atas untuk memulai koneksi dan menampilkan QR code pairing.
-                </p>
-              </div>
-            )
+              )}
+            </div>
           ) : (
             <div>
               {pairingCode ? (
-                <div style={{ textAlign: 'center', padding: '1.5rem', background: 'var(--surface-sunken)', borderRadius: '8px', border: '1px solid var(--border)' }}>
-                  <p class="muted small" style={{ marginBottom: '0.25rem' }}>Kode Pairing 8 Digit WhatsApp:</p>
-                  <div style={{ fontSize: '2.4rem', fontWeight: 800, letterSpacing: '0.25em', fontFamily: 'monospace', color: 'var(--color-primary, #3b82f6)', margin: '0.5rem 0' }}>
+                <div style={{ textAlign: 'center', padding: '1.5rem', background: 'var(--surface-sunken)', borderRadius: '8px' }}>
+                  <p class="muted small" style={{ marginBottom: '0.5rem' }}>Kode Pairing WhatsApp 8 Digit Anda:</p>
+                  <div style={{ fontSize: '2rem', fontWeight: 800, letterSpacing: '0.3em', margin: '0.75rem 0', color: 'var(--accent)', fontFamily: 'monospace' }}>
                     {pairingCode}
                   </div>
-                  <div style={{ display: 'flex', justifyContent: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
+                  <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center' }}>
                     <button
                       type="button"
                       class="btn btn-primary btn-sm"
                       onClick={handleCopyPairingCode}
                     >
-                      {copiedCode ? '✓ Kode Tersalin!' : 'Salin Kode'}
+                      <Icons.Copy width={13} height={13} />
+                      <span>{copiedCode ? 'Tersalin!' : 'Salin Kode'}</span>
                     </button>
                     <button
                       type="button"
@@ -511,41 +678,25 @@ export function SetupPage({ status, onFinish }: SetupPageProps) {
                       Minta Kode Baru
                     </button>
                   </div>
-                  <div style={{ textAlign: 'left', marginTop: '1rem', paddingTop: '0.75rem', borderTop: '1px solid var(--border)' }}>
-                    <p class="small" style={{ fontWeight: 600, marginBottom: '0.25rem' }}>Langkah di WhatsApp:</p>
-                    <ol class="small muted" style={{ paddingLeft: '1.2rem', margin: 0, lineHeight: 1.6 }}>
-                      <li>Buka WhatsApp di ponsel → Menu ⋮ / Pengaturan → <strong>Perangkat Tertaut</strong>.</li>
-                      <li>Ketuk <strong>Tautkan Perangkat</strong>.</li>
-                      <li>Pilih <strong>Tautkan dengan nomor telepon saja</strong> di bagian bawah.</li>
-                      <li>Ketik 8 karakter kode di atas.</li>
-                    </ol>
-                  </div>
                 </div>
               ) : (
                 <form onSubmit={handlePairingCodeRequest} style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                  <label>
-                    <span class="small muted">Nomor HP WhatsApp (dengan kode negara):</span>
+                  <div class="form-group">
+                    <label class="form-label">
+                      <span>Nomor HP WhatsApp Bot (dengan kode negara)</span>
+                    </label>
                     <input
                       type="tel"
                       class="input"
-                      style={{ width: '100%', marginTop: '0.25rem' }}
                       placeholder="Contoh: 628123456789 atau 08123456789"
                       value={waPhone}
                       onInput={(e) => setWaPhone((e.target as HTMLInputElement).value)}
                       required
                     />
-                  </label>
-                  {waPhone.trim().startsWith('0') && (
-                    <p class="muted small" style={{ margin: '-0.25rem 0 0.25rem' }}>
-                      Nomor akan otomatis dikonversi ke format internasional: <strong>+62{waPhone.trim().slice(1)}</strong>
-                    </p>
-                  )}
+                  </div>
                   <button type="submit" class="btn btn-primary" disabled={loading || !waPhone.trim()}>
-                    {loading ? 'Meminta kode dari server WhatsApp…' : 'Dapatkan Pairing Code'}
+                    <span>{loading ? 'Meminta kode dari server…' : 'Dapatkan Pairing Code'}</span>
                   </button>
-                  <p class="muted small">
-                    Permintaan pairing code akan otomatis menginisialisasi socket WhatsApp.
-                  </p>
                 </form>
               )}
             </div>
@@ -564,24 +715,28 @@ export function SetupPage({ status, onFinish }: SetupPageProps) {
 
       {/* Step 4: Verifikasi Owner */}
       {step === 4 && (
-        <Card title="Langkah 4: Verifikasi Nomor Owner">
+        <Card title="Langkah 4: Verifikasi Nomor Owner" icon={<Icons.ShieldCheck width={16} height={16} />}>
           <p class="muted" style={{ marginBottom: '1.25rem' }}>
-            Owner adalah pengambil keputusan tertinggi bot. Tindakan sensitif L1 (kick, kirim pesan ke kontak lain,
-            ubah setelan) membutuhkan persetujuan Owner.
+            Owner adalah pemegang kendali tertinggi bot. Aksi berisiko L1 membutuhkan izin Owner.
           </p>
 
           {ownerVerified ? (
             <div class="banner ok" style={{ marginBottom: '1.5rem' }}>
-              <strong>✓ Owner Telah Terverifikasi!</strong>
-              <p class="small" style={{ marginTop: '0.25rem' }}>
-                Nomor Owner aktif: <code>{status?.ownerConfigured ? 'Dikonfigurasi' : ownerPhone}</code>
-              </p>
+              <Icons.CheckCircle width={18} height={18} />
+              <div>
+                <strong>Owner Telah Terverifikasi!</strong>
+                <p class="small" style={{ margin: '2px 0 0' }}>
+                  Nomor Owner: <code>{status?.ownerConfigured ? 'Terkonfigurasi' : ownerPhone}</code>
+                </p>
+              </div>
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '1.5rem' }}>
-              <label>
-                <span class="small muted">Nomor WhatsApp Owner (dengan kode negara):</span>
-                <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.25rem' }}>
+              <div class="form-group">
+                <label class="form-label">
+                  <span>Nomor WhatsApp Owner (Pemilik Bot)</span>
+                </label>
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
                   <input
                     type="text"
                     class="input"
@@ -596,42 +751,44 @@ export function SetupPage({ status, onFinish }: SetupPageProps) {
                     onClick={() => void handleRequestOwnerCode()}
                     disabled={loading || !ownerPhone}
                   >
-                    Minta Kode Verifikasi
+                    Minta Kode 6-Digit
                   </button>
                 </div>
-              </label>
+              </div>
 
               {ownerVerificationCode && (
-                <div style={{ padding: '1rem', background: 'var(--surface-sunken)', borderRadius: '8px' }}>
-                  <p class="muted small" style={{ marginBottom: '0.5rem' }}>
-                    Kode verifikasi yang dihasilkan:
+                <div class="banner info" style={{ padding: '12px 16px' }}>
+                  <strong>Kode Verifikasi: <code>{ownerVerificationCode}</code></strong>
+                  <p class="small" style={{ margin: '4px 0 0' }}>
+                    Klik tombol Verifikasi di bawah untuk mengonfirmasi Owner.
                   </p>
-                  <div style={{ fontSize: '1.5rem', fontWeight: 700, letterSpacing: '0.15em', fontFamily: 'monospace' }}>
-                    {ownerVerificationCode}
-                  </div>
-                  <p class="muted small" style={{ marginTop: '0.5rem' }}>
-                    Konfirmasi kode di bawah ini untuk mengangkat nomor ini sebagai Owner:
-                  </p>
-                  <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
-                    <input
-                      type="text"
-                      class="input"
-                      style={{ width: '140px', textAlign: 'center', fontSize: '1.1rem', letterSpacing: '0.1em' }}
-                      maxLength={6}
-                      value={inputCode}
-                      onInput={(e) => setInputCode((e.target as HTMLInputElement).value)}
-                    />
-                    <button
-                      type="button"
-                      class="btn btn-primary"
-                      onClick={() => void handleVerifyOwner()}
-                      disabled={loading || !inputCode}
-                    >
-                      Konfirmasi Owner
-                    </button>
-                  </div>
                 </div>
               )}
+
+              <div class="form-group">
+                <label class="form-label">
+                  <span>Masukkan Kode 6-Digit</span>
+                </label>
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                  <input
+                    type="text"
+                    class="input"
+                    style={{ flex: 1 }}
+                    maxLength={6}
+                    placeholder="Contoh: 123456"
+                    value={inputCode}
+                    onInput={(e) => setInputCode((e.target as HTMLInputElement).value)}
+                  />
+                  <button
+                    type="button"
+                    class="btn btn-primary"
+                    onClick={() => void handleVerifyOwner()}
+                    disabled={loading || inputCode.length !== 6}
+                  >
+                    Verifikasi Owner
+                  </button>
+                </div>
+              </div>
             </div>
           )}
 
@@ -648,32 +805,110 @@ export function SetupPage({ status, onFinish }: SetupPageProps) {
 
       {/* Step 5: Persona & Mode Akses */}
       {step === 5 && (
-        <Card title="Langkah 5: Persona Awal & Mode Akses Nomor Asing">
+        <Card title="Langkah 5: Kepribadian Bot & Mode Akses" icon={<Icons.Sparkles width={16} height={16} />}>
           <p class="muted" style={{ marginBottom: '1.25rem' }}>
-            Pilih kepribadian awal bot dan bagaimana bot memperlakukan nomor asing yang belum terdaftar.
+            Pilih watak awal bot (atau rancang persona kustom sendiri) dan tentukan bagaimana bot menyikapi nomor baru.
           </p>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-            <label>
-              <span class="small muted">Pilih Persona Utama:</span>
-              <select
-                class="input"
-                style={{ width: '100%', marginTop: '0.25rem' }}
-                value={selectedPersona}
-                onChange={(e) => setSelectedPersona((e.target as HTMLSelectElement).value)}
+            {/* Toggle Persona Mode */}
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <button
+                type="button"
+                class={`btn btn-sm ${personaMode === 'preset' ? 'btn-primary' : 'btn-secondary'}`}
+                onClick={() => setPersonaMode('preset')}
               >
-                {personas.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name} ({p.style})
-                  </option>
-                ))}
-              </select>
-            </label>
+                Pilih Persona Bawaan
+              </button>
+              <button
+                type="button"
+                class={`btn btn-sm ${personaMode === 'custom' ? 'btn-primary' : 'btn-secondary'}`}
+                onClick={() => setPersonaMode('custom')}
+              >
+                <Icons.Plus width={13} height={13} />
+                <span>Rancang Persona Kustom</span>
+              </button>
+            </div>
+
+            {personaMode === 'preset' ? (
+              <div class="form-group">
+                <label class="form-label">
+                  <span>Pilih Karakter Bot</span>
+                </label>
+                <select
+                  class="input"
+                  value={selectedPersona}
+                  onChange={(e) => setSelectedPersona((e.target as HTMLSelectElement).value)}
+                >
+                  {personas.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name} ({p.style}) — {p.greeting ? `"${p.greeting}"` : p.id}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', padding: '16px', background: 'var(--surface-2)', borderRadius: '10px', border: '1px solid var(--border)' }}>
+                <div class="grid grid-2">
+                  <div class="form-group">
+                    <label class="form-label">
+                      <span>Nama Bot</span>
+                    </label>
+                    <input
+                      type="text"
+                      class="input"
+                      value={customName}
+                      onInput={(e) => setCustomName((e.target as HTMLInputElement).value)}
+                      placeholder="misal: Jarvis, Luna AI"
+                      required
+                    />
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label">
+                      <span>Gaya Tutur (Tone)</span>
+                    </label>
+                    <input
+                      type="text"
+                      class="input"
+                      value={customStyle}
+                      onInput={(e) => setCustomStyle((e.target as HTMLInputElement).value)}
+                      placeholder="misal: jutek dry text, ramah formal, gaul santai"
+                    />
+                  </div>
+                </div>
+
+                <div class="form-group">
+                  <label class="form-label">
+                    <span>Sapaan Awal (Greeting)</span>
+                  </label>
+                  <input
+                    type="text"
+                    class="input"
+                    value={customGreeting}
+                    onInput={(e) => setCustomGreeting((e.target as HTMLInputElement).value)}
+                    placeholder="misal: paan? / Ada yang bisa kubantu?"
+                  />
+                </div>
+
+                <div class="form-group">
+                  <label class="form-label">
+                    <span>Instruksi Sistem Tambahan</span>
+                  </label>
+                  <textarea
+                    class="input"
+                    style={{ minHeight: '70px', resize: 'vertical' }}
+                    value={customPrompt}
+                    onInput={(e) => setCustomPrompt((e.target as HTMLTextAreaElement).value)}
+                    placeholder="Instruksi watak spesifik untuk model AI..."
+                  />
+                </div>
+              </div>
+            )}
 
             <div>
-              <span class="small muted">Mode Akses untuk Nomor Asing:</span>
+              <span class="small muted" style={{ fontWeight: 600 }}>Mode Akses Nomor Asing:</span>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '0.5rem' }}>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', cursor: 'pointer' }}>
                   <input
                     type="radio"
                     name="accessMode"
@@ -682,10 +917,10 @@ export function SetupPage({ status, onFinish }: SetupPageProps) {
                     onChange={() => setAccessMode('closed')}
                   />
                   <span>
-                    <strong>Tertutup (Disarankan)</strong> — Bot hanya membalas Owner & Admin; nomor asing diabaikan.
+                    <strong>Tertutup (Disarankan)</strong> — Hanya membalas Owner & Admin; nomor asing diabaikan.
                   </span>
                 </label>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', cursor: 'pointer' }}>
                   <input
                     type="radio"
                     name="accessMode"
@@ -694,10 +929,10 @@ export function SetupPage({ status, onFinish }: SetupPageProps) {
                     onChange={() => setAccessMode('auto_member')}
                   />
                   <span>
-                    <strong>Member Otomatis</strong> — Nomor baru otomatis menjadi Member dan bisa mengobrol.
+                    <strong>Member Otomatis (Publik)</strong> — Nomor baru otomatis menjadi Member dan dapat mengobrol.
                   </span>
                 </label>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', cursor: 'pointer' }}>
                   <input
                     type="radio"
                     name="accessMode"
@@ -722,7 +957,7 @@ export function SetupPage({ status, onFinish }: SetupPageProps) {
                 onClick={() => void handleFinalizeSetup()}
                 disabled={loading}
               >
-                {loading ? 'Menyimpan…' : 'Selesaikan Setup →'}
+                <span>{loading ? 'Menyimpan…' : 'Selesaikan Setup →'}</span>
               </button>
             </div>
           </div>
@@ -731,18 +966,21 @@ export function SetupPage({ status, onFinish }: SetupPageProps) {
 
       {/* Step 6: Selesai & Uji Coba */}
       {step === 6 && (
-        <Card title="Langkah 6: Selesai & Uji Coba">
-          <div class="banner ok" style={{ marginBottom: '1.5rem', textAlign: 'center', padding: '1.5rem' }}>
-            <h2 style={{ fontSize: '1.25rem', marginBottom: '0.5rem' }}>🎉 Bot WhatsApp ArKzorMD Siap Digunakan!</h2>
-            <p class="muted small">
-              Semua konfigurasi awal selesai. Anda dapat menguji respons bot langsung di bawah ini.
+        <Card title="Langkah 6: Selesai & Uji Coba" icon={<Icons.CheckCircle width={16} height={16} />}>
+          <div class="banner ok" style={{ marginBottom: '1.5rem', textAlign: 'center', padding: '1.75rem 1rem' }}>
+            <Icons.CheckCircle width={32} height={32} />
+            <h2 style={{ fontSize: '1.35rem', margin: '8px 0 4px' }}>Bot WhatsApp ArKzorMD Siap Digunakan!</h2>
+            <p class="muted small" style={{ margin: 0 }}>
+              Semua konfigurasi selesai. Anda dapat langsung menguji respons AI atau masuk ke Dashboard.
             </p>
           </div>
 
           <div style={{ marginBottom: '1.5rem' }}>
-            <label>
-              <span class="small muted">Kirim Pesan Uji ke AI:</span>
-              <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.25rem' }}>
+            <div class="form-group">
+              <label class="form-label">
+                <span>Kirim Pesan Uji ke AI</span>
+              </label>
+              <div style={{ display: 'flex', gap: '0.5rem' }}>
                 <input
                   type="text"
                   class="input"
@@ -760,26 +998,27 @@ export function SetupPage({ status, onFinish }: SetupPageProps) {
                   Kirim Tes
                 </button>
               </div>
-            </label>
+            </div>
 
             {testResponse && (
-              <div style={{ marginTop: '1rem', padding: '1rem', background: 'var(--surface-sunken)', borderRadius: '8px' }}>
-                <p class="small muted" style={{ marginBottom: '0.25rem' }}>Balasan Bot:</p>
-                <p style={{ fontWeight: 500 }}>{testResponse}</p>
+              <div style={{ marginTop: '1rem', padding: '1rem', background: 'var(--surface-sunken)', borderRadius: '8px', border: '1px solid var(--border)' }}>
+                <span class="small muted" style={{ fontWeight: 600 }}>Balasan Bot:</span>
+                <p style={{ margin: '4px 0 0', fontWeight: 500 }}>{testResponse}</p>
               </div>
             )}
           </div>
 
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', paddingTop: '1rem', borderTop: '1px solid var(--border)' }}>
             <button
               type="button"
               class="btn btn-primary"
+              style={{ padding: '10px 20px', fontSize: '15px' }}
               onClick={() => {
                 if (onFinish) onFinish();
                 else window.location.hash = '#/dashboard';
               }}
             >
-              Buka Dashboard Utama →
+              <span>Selesai & Masuk ke Dashboard Utama →</span>
             </button>
           </div>
         </Card>

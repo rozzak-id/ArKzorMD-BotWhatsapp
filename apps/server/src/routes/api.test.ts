@@ -212,5 +212,78 @@ describe('Server API & Auth Routes', () => {
     expect(exportAuditJsonRes.headers['content-type']).toContain('application/json');
     const auditJson = JSON.parse(exportAuditJsonRes.payload);
     expect(Array.isArray(auditJson.entries)).toBe(true);
+
+    // 10. Persona CRUD
+    const createPersonaRes = await app.inject({
+      method: 'POST',
+      url: '/api/personas',
+      headers: { 'x-session-token': sessionToken },
+      payload: {
+        id: 'cyber-bot',
+        name: 'Cyber Bot',
+        style: 'cyberpunk',
+        language: 'id',
+        greeting: 'Sistem aktif.',
+      },
+    });
+    expect(createPersonaRes.statusCode).toBe(200);
+    expect(context.stores.personas.get('cyber-bot')?.name).toBe('Cyber Bot');
+
+    const updatePersonaRes = await app.inject({
+      method: 'PUT',
+      url: '/api/personas/cyber-bot',
+      headers: { 'x-session-token': sessionToken },
+      payload: {
+        name: 'Cyber Bot 2.0',
+        style: 'futuristik',
+      },
+    });
+    expect(updatePersonaRes.statusCode).toBe(200);
+    expect(context.stores.personas.get('cyber-bot')?.name).toBe('Cyber Bot 2.0');
+
+    const deletePersonaRes = await app.inject({
+      method: 'DELETE',
+      url: '/api/personas/cyber-bot',
+      headers: { 'x-session-token': sessionToken },
+    });
+    expect(deletePersonaRes.statusCode).toBe(200);
+    expect(context.stores.personas.get('cyber-bot')).toBeUndefined();
+
+    // 11. Settings & 9Router Configuration
+    const updateSettingsRes = await app.inject({
+      method: 'POST',
+      url: '/api/settings',
+      headers: { 'x-session-token': sessionToken },
+      payload: {
+        aiProvider: '9router',
+        aiModel: 'auto',
+        aiBaseUrl: 'http://localhost:20128/v1',
+        selfControl: true,
+      },
+    });
+    expect(updateSettingsRes.statusCode).toBe(200);
+
+    const getSettingsRes = await app.inject({
+      method: 'GET',
+      url: '/api/settings',
+    });
+    const settingsBody = JSON.parse(getSettingsRes.payload);
+    expect(settingsBody.aiProvider).toBe('9router');
+    expect(settingsBody.aiModel).toBe('auto');
+    expect(settingsBody.aiBaseUrl).toBe('http://localhost:20128/v1');
+    expect(settingsBody.selfControl).toBe(true);
+
+    // 12. Reset Data
+    context.stores.memory.save('6281111111111@s.whatsapp.net', 'Catatan penting');
+    expect(context.stores.memory.listAll().length).toBeGreaterThan(0);
+
+    const resetMemoryRes = await app.inject({
+      method: 'POST',
+      url: '/api/settings/reset-data',
+      headers: { 'x-session-token': sessionToken },
+      payload: { target: 'memory' },
+    });
+    expect(resetMemoryRes.statusCode).toBe(200);
+    expect(context.stores.memory.listAll().length).toBe(0);
   });
 });

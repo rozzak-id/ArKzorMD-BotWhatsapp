@@ -31,26 +31,52 @@ import { createEchoTool } from '@arkzormd/plugin-example-tool';
 import type { AppConfig } from './config.js';
 import type { AppContext } from './context.js';
 
+export function createDynamicAiProvider(options: {
+  provider: string;
+  apiKey?: string | null;
+  baseUrl?: string;
+  model?: string;
+  fallbackModel?: string | null;
+  timeoutMs?: number;
+  logger?: any;
+}): AiProvider {
+  if (options.provider === 'mock') return new MockProvider();
+
+  if (options.provider === 'gemini') {
+    return new GeminiProvider({
+      apiKey: options.apiKey || null,
+      baseUrl: options.baseUrl || 'https://generativelanguage.googleapis.com/v1beta',
+      model: options.model || 'gemini-2.5-flash',
+      fallbackModel: options.fallbackModel || null,
+      timeoutMs: options.timeoutMs ?? 60_000,
+      logger: options.logger,
+    });
+  }
+
+  // openai, 9router, openrouter, ollama, custom all use OpenAiProvider!
+  let defaultBaseUrl = 'https://api.openai.com/v1';
+  if (options.provider === '9router') defaultBaseUrl = 'http://localhost:20128/v1';
+  else if (options.provider === 'openrouter') defaultBaseUrl = 'https://openrouter.ai/api/v1';
+  else if (options.provider === 'ollama') defaultBaseUrl = 'http://localhost:11434/v1';
+
+  return new OpenAiProvider({
+    apiKey: options.apiKey || (options.provider === '9router' || options.provider === 'ollama' ? 'not-needed' : null),
+    baseUrl: options.baseUrl || defaultBaseUrl,
+    model: options.model || (options.provider === '9router' ? 'auto' : 'gpt-4o-mini'),
+    fallbackModel: options.fallbackModel || null,
+    timeoutMs: options.timeoutMs ?? 60_000,
+    logger: options.logger,
+  });
+}
+
 function createProvider(
   config: AppConfig,
   logger: AppContext['logger'],
 ): AiProvider {
-  if (config.aiProvider === 'mock') return new MockProvider();
-
-  if (config.aiProvider === 'openai') {
-    return new OpenAiProvider({
-      apiKey: config.openaiApiKey,
-      baseUrl: config.openaiBaseUrl,
-      model: config.aiModel,
-      fallbackModel: config.aiFallbackModel,
-      timeoutMs: config.aiTimeoutMs,
-      logger,
-    });
-  }
-
-  return new GeminiProvider({
-    apiKey: config.geminiApiKey,
-    baseUrl: config.geminiBaseUrl,
+  return createDynamicAiProvider({
+    provider: config.aiProvider,
+    apiKey: config.aiProvider === 'gemini' ? config.geminiApiKey : config.openaiApiKey,
+    baseUrl: config.aiProvider === 'gemini' ? config.geminiBaseUrl : config.openaiBaseUrl,
     model: config.aiModel,
     fallbackModel: config.aiFallbackModel,
     timeoutMs: config.aiTimeoutMs,

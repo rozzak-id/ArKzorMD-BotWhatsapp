@@ -146,6 +146,30 @@ describe('normalizeIncomingMessage', () => {
       ),
     ).toBeNull();
 
+    // Self Control: izinkan jika allowSelfControl: true dan bukan bot sent message
+    const selfMsg = normalizeIncomingMessage(
+      raw({
+        ...base,
+        key: { remoteJid: '6281111111111@s.whatsapp.net', id: 'A-self', fromMe: true },
+      }),
+      { allowSelfControl: true, botJid: '6281111111111@s.whatsapp.net' },
+    );
+    expect(selfMsg).not.toBeNull();
+    expect(selfMsg?.senderId).toBe('6281111111111@s.whatsapp.net');
+    expect(selfMsg?.fromBot).toBe(false);
+
+    // Bot's own sent message must still be ignored
+    const sentIds = new Set(['A-sent-by-bot']);
+    expect(
+      normalizeIncomingMessage(
+        raw({
+          ...base,
+          key: { remoteJid: '6281111111111@s.whatsapp.net', id: 'A-sent-by-bot', fromMe: true },
+        }),
+        { allowSelfControl: true, sentMessageIds: sentIds },
+      ),
+    ).toBeNull();
+
     expect(
       normalizeIncomingMessage(
         raw({

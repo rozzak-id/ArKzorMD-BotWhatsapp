@@ -53,6 +53,20 @@ export const api = {
   platforms: () => request<{ platforms: PlatformCard[] }>('/api/platforms'),
   approvals: () => request<ApprovalResponse>('/api/approvals'),
   personas: () => request<PersonaResponse>('/api/personas'),
+  createPersona: (persona: any) =>
+    request<{ ok: boolean; persona: any }>('/api/personas', {
+      method: 'POST',
+      body: JSON.stringify(persona),
+    }),
+  updatePersona: (id: string, persona: any) =>
+    request<{ ok: boolean; persona: any }>(`/api/personas/${encodeURIComponent(id)}`, {
+      method: 'PUT',
+      body: JSON.stringify(persona),
+    }),
+  deletePersona: (id: string) =>
+    request<{ ok: boolean; id: string }>(`/api/personas/${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+    }),
   activatePersona: (id: string) =>
     request<{ ok: boolean; active: string }>(`/api/personas/${encodeURIComponent(id)}/activate`, {
       method: 'POST',
@@ -66,6 +80,21 @@ export const api = {
   tools: () => request<ToolResponse>('/api/tools'),
   audit: (limit = 50) => request<AuditResponse>(`/api/audit?limit=${limit}`),
   settings: () => request<SettingsResponse>('/api/settings'),
+  updateSettings: (data: any) =>
+    request<{ ok: boolean; message: string }>('/api/settings', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  testAi: (data: { aiProvider?: string; aiModel?: string; aiApiKey?: string; aiBaseUrl?: string }) =>
+    request<{ ok: boolean; latencyMs: number; reply?: string; error?: string }>('/api/settings/test-ai', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  resetData: (target: 'memory' | 'audit' | 'factory_reset') =>
+    request<{ ok: boolean; message: string }>('/api/settings/reset-data', {
+      method: 'POST',
+      body: JSON.stringify({ target }),
+    }),
   memory: (limit = 100) =>
     request<{ notes: Array<{ id: number; userJid: string; note: string; createdAt: number }> }>(
       `/api/memory?limit=${limit}`,

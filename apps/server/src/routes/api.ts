@@ -4,6 +4,18 @@ import type { InternalMessage, Persona } from '@arkzormd/core';
 import type { AppContext } from '../context.js';
 import { isSetupCompleted, requireAdmin } from '../auth.js';
 import { APP_VERSION, buildPlatforms, buildStatus } from '../status.js';
+import { createDynamicAiProvider } from '../bootstrap.js';
+
+const personaUpsertSchema = z.object({
+  id: z.string().min(1).max(50).regex(/^[a-z0-9_-]+$/i, 'ID persona harus alfanumerik (huruf, angka, strip, underscore).'),
+  name: z.string().min(1).max(80),
+  style: z.string().min(1).max(100).default('santai'),
+  language: z.string().min(1).max(10).default('id'),
+  typingDelay: z.enum(['natural', 'fast', 'slow']).default('natural'),
+  greeting: z.string().max(500).optional(),
+  forbiddenTopics: z.array(z.string()).default([]),
+  extraInstructions: z.string().max(2000).optional(),
+});
 
 const decisionSchema = z.object({
   decision: z.enum(['approve', 'reject', 'always']),
@@ -143,6 +155,65 @@ export function registerApiRoutes(app: FastifyInstance, context: AppContext): vo
     return { ok: true, imported: importedCount };
   });
 
+  app.post('/api/personas', async (request, reply) => {
+    if (!requireAdmin(context, request, reply)) return reply;
+    const parsed = personaUpsertSchema.safeParse(request.body);
+    if (!parsed.success) {
+      return reply.code(400).send({ error: parsed.error.issues[0]?.message ?? 'Data persona tidak valid.' });
+    }
+    const persona: Persona = {
+      ...parsed.data,
+      examples: [],
+    };
+    context.stores.personas.upsert(persona);
+    return { ok: true, persona };
+  });
+
+  app.put('/api/personas/:id', async (request, reply) => {
+    if (!requireAdmin(context, request, reply)) return reply;
+    const params = request.params as { id?: string };
+    const id = params.id;
+    if (!id) return reply.code(400).send({ error: 'ID persona wajib diisi.' });
+
+    const existing = context.stores.personas.get(id);
+    if (!existing) return reply.code(404).send({ error: 'Persona tidak ditemukan.' });
+
+    const body = request.body as Record<string, unknown>;
+    const updated: Persona = {
+      ...existing,
+      name: typeof body.name === 'string' && body.name ? body.name : existing.name,
+      style: typeof body.style === 'string' && body.style ? body.style : existing.style,
+      language: typeof body.language === 'string' && body.language ? body.language : existing.language,
+      typingDelay: ['natural', 'fast', 'slow'].includes(body.typingDelay as string)
+        ? (body.typingDelay as any)
+        : existing.typingDelay,
+      greeting: typeof body.greeting === 'string' ? body.greeting : existing.greeting,
+      forbiddenTopics: Array.isArray(body.forbiddenTopics) ? (body.forbiddenTopics as string[]) : existing.forbiddenTopics,
+      extraInstructions: typeof body.extraInstructions === 'string' ? body.extraInstructions : existing.extraInstructions,
+    };
+
+    context.stores.personas.upsert(updated);
+    return { ok: true, persona: updated };
+  });
+
+  app.delete('/api/personas/:id', async (request, reply) => {
+    if (!requireAdmin(context, request, reply)) return reply;
+    const params = request.params as { id?: string };
+    const id = params.id;
+    if (!id) return reply.code(400).send({ error: 'ID persona wajib diisi.' });
+
+    const active = context.stores.personas.getActive();
+    if (active?.id === id) {
+      return reply.code(400).send({ error: 'Tidak dapat menghapus persona yang sedang aktif. Aktifkan persona lain terlebih dahulu.' });
+    }
+
+    if (context.stores.personas.delete) {
+      const ok = context.stores.personas.delete(id);
+      return { ok, id };
+    }
+    return reply.code(501).send({ error: 'Store tidak mendukung penghapusan persona.' });
+  });
+
   app.get('/api/users', async () => ({ users: context.stores.users.list() }));
 
   app.get('/api/tools', async () => ({
@@ -201,18 +272,179 @@ export function registerApiRoutes(app: FastifyInstance, context: AppContext): vo
     };
   });
 
-  app.get('/api/settings', async () => ({
-    prefix: context.config.prefix,
-    accessMode: context.config.accessMode,
-    defaultChatMode: context.config.defaultChatMode,
-    killSwitch: context.stores.settings.getBoolean('kill_switch'),
-    rateLimitPerMinute: context.stores.settings.getNumber('rate_limit_per_minute', 12),
-    aiProvider: context.config.aiProvider,
-    aiModel: context.config.aiModel,
-    aiFallbackModel: context.config.aiFallbackModel,
-    aiTimeoutMs: context.config.aiTimeoutMs,
-    whatsappMode: context.config.whatsappMode,
-  }));
+  app.get('/api/settings', async () => {
+    const aiProvider = context.stores.settings.get('ai_provider') || context.config.aiProvider;
+    const aiModel = context.stores.settings.get('ai_model') || context.config.aiModel;
+    const aiBaseUrl = context.stores.settings.get('ai_base_url') || (aiProvider === 'gemini' ? context.config.geminiBaseUrl : context.config.openaiBaseUrl);
+    const selfControl = context.stores.settings.getBoolean('self_control', true);
+    const hasApiKey = Boolean(
+      context.stores.settings.get('ai_api_key') ||
+      (aiProvider === 'gemini' ? context.config.geminiApiKey : context.config.openaiApiKey) ||
+      aiProvider === '9router' ||
+      aiProvider === 'ollama' ||
+      aiProvider === 'mock'
+    );
+
+    return {
+      prefix: context.stores.settings.get('prefix') || context.config.prefix,
+      accessMode: context.stores.settings.get('access_mode') || context.config.accessMode,
+      defaultChatMode: context.stores.settings.get('default_chat_mode') || context.config.defaultChatMode,
+      killSwitch: context.stores.settings.getBoolean('kill_switch'),
+      selfControl,
+      rateLimitPerMinute: context.stores.settings.getNumber('rate_limit_per_minute', 12),
+      aiProvider,
+      aiModel,
+      aiBaseUrl,
+      aiFallbackModel: context.config.aiFallbackModel,
+      aiTimeoutMs: context.config.aiTimeoutMs,
+      hasApiKey,
+      whatsappMode: context.config.whatsappMode,
+    };
+  });
+
+  app.post('/api/settings', async (request, reply) => {
+    if (!requireAdmin(context, request, reply)) return reply;
+    const body = request.body as Record<string, unknown> | undefined;
+    if (!body) return reply.code(400).send({ error: 'Body tidak boleh kosong.' });
+
+    if (typeof body.prefix === 'string' && body.prefix) {
+      context.stores.settings.set('prefix', body.prefix);
+    }
+    if (typeof body.accessMode === 'string' && ['closed', 'auto_member', 'approval'].includes(body.accessMode)) {
+      context.stores.settings.set('access_mode', body.accessMode);
+    }
+    if (typeof body.defaultChatMode === 'string' && ['off', 'mention', 'active'].includes(body.defaultChatMode)) {
+      context.stores.settings.set('default_chat_mode', body.defaultChatMode);
+    }
+    if (typeof body.selfControl === 'boolean') {
+      context.stores.settings.set('self_control', String(body.selfControl));
+    }
+    if (typeof body.rateLimitPerMinute === 'number' && body.rateLimitPerMinute > 0) {
+      context.stores.settings.set('rate_limit_per_minute', String(body.rateLimitPerMinute));
+    }
+
+    let reloadAi = false;
+    if (typeof body.aiProvider === 'string') {
+      context.stores.settings.set('ai_provider', body.aiProvider);
+      reloadAi = true;
+    }
+    if (typeof body.aiModel === 'string' && body.aiModel) {
+      context.stores.settings.set('ai_model', body.aiModel);
+      reloadAi = true;
+    }
+    if (typeof body.aiBaseUrl === 'string' && body.aiBaseUrl) {
+      context.stores.settings.set('ai_base_url', body.aiBaseUrl);
+      reloadAi = true;
+    }
+    if (typeof body.aiApiKey === 'string' && body.aiApiKey.trim()) {
+      context.stores.settings.set('ai_api_key', body.aiApiKey.trim());
+      reloadAi = true;
+    }
+
+    if (reloadAi) {
+      const provider = context.stores.settings.get('ai_provider') || context.config.aiProvider;
+      const model = context.stores.settings.get('ai_model') || context.config.aiModel;
+      const baseUrl = context.stores.settings.get('ai_base_url') || undefined;
+      const apiKey = context.stores.settings.get('ai_api_key') ||
+        (provider === 'gemini' ? context.config.geminiApiKey : context.config.openaiApiKey);
+
+      try {
+        const newProvider = createDynamicAiProvider({
+          provider,
+          model,
+          baseUrl,
+          apiKey,
+          fallbackModel: context.config.aiFallbackModel,
+          timeoutMs: context.config.aiTimeoutMs,
+          logger: context.logger,
+        });
+        context.bot.updateAiProvider(newProvider);
+        context.aiProviderId = newProvider.id;
+      } catch (err) {
+        context.logger.error({ err }, 'Gagal reload AI provider');
+      }
+    }
+
+    context.stores.audit.append({
+      actorJid: context.config.ownerJid,
+      action: 'settings.updated',
+      params: { via: 'web_ui' },
+      result: { success: true },
+      createdAt: Date.now(),
+    });
+
+    return { ok: true, message: 'Pengaturan berhasil disimpan & diterapkan.' };
+  });
+
+  app.post('/api/settings/test-ai', async (request, reply) => {
+    if (!requireAdmin(context, request, reply)) return reply;
+    const body = (request.body as Record<string, unknown> | undefined) ?? {};
+    const provider = String(body.aiProvider || context.stores.settings.get('ai_provider') || context.config.aiProvider);
+    const model = String(body.aiModel || context.stores.settings.get('ai_model') || context.config.aiModel);
+    const baseUrl = String(body.aiBaseUrl || context.stores.settings.get('ai_base_url') || (provider === 'gemini' ? context.config.geminiBaseUrl : context.config.openaiBaseUrl));
+    const apiKey = typeof body.aiApiKey === 'string' && body.aiApiKey.trim()
+      ? body.aiApiKey.trim()
+      : context.stores.settings.get('ai_api_key') || (provider === 'gemini' ? context.config.geminiApiKey : context.config.openaiApiKey);
+
+    const startTime = Date.now();
+    try {
+      const testProvider = createDynamicAiProvider({
+        provider,
+        model,
+        baseUrl,
+        apiKey,
+        timeoutMs: 15_000,
+        logger: context.logger,
+      });
+
+      const res = await testProvider.complete({
+        messages: [{ role: 'user', content: 'Halo, konfirmasi koneksi API berhasil dalam 3 kata.' }],
+        tools: [],
+      });
+
+      const latencyMs = Date.now() - startTime;
+      return {
+        ok: true,
+        latencyMs,
+        provider,
+        model,
+        reply: res.text || '(Koneksi berhasil)',
+      };
+    } catch (err) {
+      const latencyMs = Date.now() - startTime;
+      const msg = err instanceof Error ? err.message : String(err);
+      return reply.code(400).send({
+        ok: false,
+        latencyMs,
+        error: `Tes AI gagal: ${msg}`,
+      });
+    }
+  });
+
+  app.post('/api/settings/reset-data', async (request, reply) => {
+    if (!requireAdmin(context, request, reply)) return reply;
+    const body = request.body as { target?: string } | undefined;
+    const target = body?.target;
+
+    if (target === 'memory') {
+      context.stores.memory.clearAll?.();
+      return { ok: true, message: 'Seluruh catatan memori bot berhasil dihapus.' };
+    }
+
+    if (target === 'audit') {
+      context.stores.audit.clearAll?.();
+      return { ok: true, message: 'Seluruh riwayat audit log berhasil dibersihkan.' };
+    }
+
+    if (target === 'factory_reset') {
+      context.stores.memory.clearAll?.();
+      context.stores.audit.clearAll?.();
+      context.stores.settings.set('setup_completed', 'false');
+      return { ok: true, message: 'Data dan status setup berhasil di-reset ke kondisi awal.' };
+    }
+
+    return reply.code(400).send({ error: 'Target reset tidak valid (memory | audit | factory_reset).' });
+  });
 
   app.post('/api/settings/kill-switch', async (request, reply) => {
     if (!requireAdmin(context, request, reply)) return reply;

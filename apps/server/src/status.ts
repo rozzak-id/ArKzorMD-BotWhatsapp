@@ -47,14 +47,19 @@ function startOfToday(): number {
 }
 
 export function buildStatus(context: AppContext): StatusResponse {
+  const provider = context.stores.settings.get('ai_provider') || context.aiProviderId || context.config.aiProvider;
+  const model = context.stores.settings.get('ai_model') || context.config.aiModel;
+  const prefix = context.stores.settings.get('prefix') || context.config.prefix;
+  const ownerConfigured = Boolean(context.config.ownerJid || context.stores.settings.get('owner_jid'));
+
   return {
     app: 'ArKzorMD',
     version: APP_VERSION,
     nodeEnv: context.config.nodeEnv,
     uptimeSec: Math.floor((Date.now() - context.startedAt) / 1000),
     ai: {
-      provider: context.aiProviderId,
-      model: context.config.aiModel,
+      provider,
+      model,
       fallbackModel: context.config.aiFallbackModel,
       timeoutMs: context.config.aiTimeoutMs,
     },
@@ -69,13 +74,13 @@ export function buildStatus(context: AppContext): StatusResponse {
       lastError: context.adapter.getLastError?.() ?? null,
     },
     killSwitch: context.stores.settings.getBoolean('kill_switch'),
-    ownerConfigured: Boolean(context.config.ownerJid),
+    ownerConfigured,
     counts: {
       users: context.stores.users.count(),
       pendingApprovals: context.approvals.pendingCount(),
       messagesToday: context.stores.messages.countSince(startOfToday()),
     },
-    prefix: context.config.prefix,
+    prefix,
   };
 }
 

@@ -130,6 +130,14 @@ export class AgentOrchestrator {
     this.maxSteps = deps.maxSteps ?? 4;
   }
 
+  setProvider(provider: AiProvider): void {
+    (this.deps as { provider: AiProvider }).provider = provider;
+  }
+
+  getProvider(): AiProvider {
+    return this.deps.provider;
+  }
+
   async run(input: AgentRunInput): Promise<AgentRunResult> {
     // FR-19: Transkripsi voice note / rekaman audio jika transcriber terpasang
     if (this.deps.transcriber && input.message.media && input.message.media.length > 0) {

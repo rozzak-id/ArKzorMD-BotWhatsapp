@@ -307,6 +307,11 @@ export class SqlitePersonaStore implements PersonaStore {
     transaction();
   }
 
+  delete(id: string): boolean {
+    const result = this.db.prepare('DELETE FROM personas WHERE id = ? AND is_active = 0').run(id);
+    return result.changes > 0;
+  }
+
   getAssignment(scope: 'chat' | 'group', scopeId: string): string | undefined {
     const row = this.db
       .prepare('SELECT persona_id FROM persona_assignments WHERE scope = ? AND scope_id = ?')
@@ -542,6 +547,10 @@ export class SqliteAuditStore implements AuditStore {
       .all(limit) as AuditRow[];
     return rows.map(toAudit);
   }
+
+  clearAll(): void {
+    this.db.prepare('DELETE FROM audit_logs').run();
+  }
 }
 
 export class SqliteSettingsStore implements SettingsStore {
@@ -661,6 +670,10 @@ export class SqliteMemoryStore implements MemoryStore {
   clear(userJid: string): number {
     const result = this.db.prepare('DELETE FROM memory_notes WHERE user_jid = ?').run(userJid);
     return result.changes;
+  }
+
+  clearAll(): void {
+    this.db.prepare('DELETE FROM memory_notes').run();
   }
 }
 
