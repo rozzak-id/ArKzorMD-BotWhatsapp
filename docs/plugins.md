@@ -89,13 +89,13 @@ tools.register(remindTool);
 
 Aturan penentu level efektif (`resolveEffectiveLevel`):
 
-1. **Aksi chat berjalan:** `wa.reply`, `wa.react`, `wa.send_text` (tanpa `to`), edit pesan bot sendiri $\rightarrow$ `L0`.
-2. **Aksi ke chat/kontak/grup lain:** `to` atau `target` berbeda dari chat berjalan $\rightarrow$ `L1`.
-3. **Aksi pada akun bot:** ubah profil, nama, status, privasi, manajemen chat $\rightarrow$ `L1`.
-4. **Aksi menimpa milik orang lain:** hapus pesan orang lain, kick, promote, demote $\rightarrow$ `L1`.
-5. **Membaca chat lain, daftar chat, kontak:** $\rightarrow$ `L1`, khusus Owner (non-owner ditolak).
-6. **Penerima banyak:** jumlah penerima $> 20$ (default, bisa diatur) $\rightarrow$ `L1`.
-7. **L2 Terkunci:** konfigurasi, secret, kode, sesi $\rightarrow$ `L2`.
+1. **Aksi chat berjalan:** `wa.reply`, `wa.react`, `wa.send_text` (tanpa `to`), edit pesan bot sendiri → `L0`.
+2. **Aksi ke chat/kontak/grup lain:** `to` atau `target` berbeda dari chat berjalan → `L1`.
+3. **Aksi pada akun bot:** ubah profil, nama, status, privasi, manajemen chat → `L1`.
+4. **Aksi menimpa milik orang lain:** hapus pesan orang lain, kick, promote, demote → `L1`.
+5. **Membaca chat lain, daftar chat, kontak:** → `L1`, khusus Owner (non-owner ditolak).
+6. **Penerima banyak:** jumlah penerima > 20 (default, bisa diatur) → `L1`.
+7. **L2 Terkunci:** konfigurasi, secret, kode, sesi → `L2`.
 
 Aturan implementasi penting:
 

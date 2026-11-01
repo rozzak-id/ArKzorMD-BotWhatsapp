@@ -90,25 +90,25 @@ berjalan agar percakapan dasar tidak mati.
 Sistem izin ArKzorMD menggunakan dua fungsi murni di `packages/core/src/security/resolver.ts`:
 
 1. **`resolveEffectiveLevel(tool, params, context)`**: Menghitung level risiko aktual (`L0`, `L1`, `L2`) berdasarkan parameter dan konteks percakapan:
-   - **Aksi chat berjalan** (balas, react, kirim media/teks tanpa `to` lain) $\rightarrow$ `L0`.
-   - **Aksi ke chat/kontak/grup lain** (`to` atau target berbeda dari `currentChatId`) $\rightarrow$ `L1`.
-   - **Aksi pada akun bot** (nama profil, about, foto, status, privasi, manajemen chat) $\rightarrow$ `L1`.
-   - **Aksi menimpa milik orang lain** (menghapus pesan orang lain/forEveryone, kick, promote, demote) $\rightarrow$ `L1`.
-   - **Membaca chat lain, daftar chat, daftar kontak** $\rightarrow$ `L1` (hanya Owner; non-owner ditolak).
-   - **Penerima banyak** ($>20$ penerima, bisa diatur via `maxRecipients`) $\rightarrow$ `L1`.
-   - **Aksi sistem / Kategori K** (konfigurasi, secret, kill switch off, shell) $\rightarrow$ `L2`.
+   - **Aksi chat berjalan** (balas, react, kirim media/teks tanpa `to` lain) → `L0`.
+   - **Aksi ke chat/kontak/grup lain** (`to` atau target berbeda dari `currentChatId`) → `L1`.
+   - **Aksi pada akun bot** (nama profil, about, foto, status, privasi, manajemen chat) → `L1`.
+   - **Aksi menimpa milik orang lain** (menghapus pesan orang lain/forEveryone, kick, promote, demote) → `L1`.
+   - **Membaca chat lain, daftar chat, daftar kontak** → `L1` (hanya Owner; non-owner ditolak).
+   - **Penerima banyak** (>20 penerima, bisa diatur via `maxRecipients`) → `L1`.
+   - **Aksi sistem / Kategori K** (konfigurasi, secret, kill switch off, shell) → `L2`.
 
 2. **`decide(tool, params, context)`**: Mengambil keputusan akhir (`allow`, `pending_approval`, atau `denied`):
-   - Jika `tool` tidak dikenal $\rightarrow$ `denied` (`unknown_tool`).
-   - Jika level `L2` $\rightarrow$ selalu `denied`.
-   - Jika role pengguna $<$ `tool.minRole` $\rightarrow$ `denied`.
-   - Jika level `L0` $\rightarrow$ `allow`.
+   - Jika `tool` tidak dikenal → `denied` (`unknown_tool`).
+   - Jika level `L2` → selalu `denied`.
+   - Jika role pengguna < `tool.minRole` → `denied`.
+   - Jika level `L0` → `allow`.
    - Jika level `L1`:
-     - Periksa Kill Switch $\rightarrow$ jika aktif, `denied`.
-     - Periksa aturan "setuju selalu" $\rightarrow$ jika cocok, `allow`.
-     - Member $\rightarrow$ `denied`.
-     - Admin $\rightarrow$ `pending_approval` ke Owner.
-     - Owner $\rightarrow$ `pending_approval` (konfirmasi satu ketuk; menjadi `allow` jika tool bertanda `relaxable` dan konfirmasi dinonaktifkan oleh Owner).
+     - Periksa Kill Switch → jika aktif, `denied`.
+     - Periksa aturan "setuju selalu" → jika cocok, `allow`.
+     - Member → `denied`.
+     - Admin → `pending_approval` ke Owner.
+     - Owner → `pending_approval` (konfirmasi satu ketuk; menjadi `allow` jika tool bertanda `relaxable` dan konfirmasi dinonaktifkan oleh Owner).
 
 ### Invariant Keamanan Eksekusi L1
 Semua handler tool `L1` **hanya boleh dieksekusi lewat callback `ApprovalEngine`** (`isApprovalExecution: true`). Panggilan langsung dari `AgentOrchestrator` atau jalur lain otomatis ditolak oleh `executeTool`.
